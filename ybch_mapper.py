@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 
 # Configure the page
 st.set_page_config(
-    page_title="Yellowish Bird Genetic Data Map",
+    page_title="Yellow-breasted Chat Genoscape",
     page_icon="🐦",
     layout="wide"
 )
