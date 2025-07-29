@@ -22,7 +22,7 @@ st.sidebar.header("📡 Data Source")
 github_url = st.sidebar.text_input(
     "GitHub Raw CSV URL:",
     value=GITHUB_DATA_URL,
-    help="Update this with your actual GitHub raw CSV URL"
+    help="Your GitHub raw CSV URL"
 )
 
 @st.cache_data
@@ -36,12 +36,75 @@ def load_github_data(url):
         st.error(f"Error loading data from GitHub: {e}")
         return None
 
+@st.cache_data
+def load_grid_file_simple(grid_file):
+    """Load ASCII grid file without rasterio"""
+    try:
+        # Read the file content
+        content = grid_file.getvalue().decode('utf-8')
+        lines = content.strip().split('\n')
+        
+        # Try to parse as ASCII grid format
+        header = {}
+        data_start = 0
+        
+        # Look for header information
+        for i, line in enumerate(lines):
+            if any(keyword in line.lower() for keyword in ['ncols', 'nrows', 'xllcorner', 'yllcorner', 'cellsize', 'nodata']):
+                parts = line.split()
+                if len(parts) >= 2:
+                    header[parts[0].lower()] = float(parts[1]) if '.' in parts[1] or 'e' in parts[1].lower() else int(parts[1])
+                data_start = i + 1
+            else:
+                break
+        
+        # Read the grid data
+        grid_data = []
+        for line in lines[data_start:]:
+            if line.strip():
+                row = [float(x) for x in line.split()]
+                grid_data.append(row)
+        
+        if not grid_data:
+            st.error("No grid data found in file")
+            return None, None, None, None
+        
+        grid_array = np.array(grid_data)
+        
+        # Create coordinate arrays
+        if 'ncols' in header and 'nrows' in header:
+            ncols = int(header['ncols'])
+            nrows = int(header['nrows'])
+            
+            if 'xllcorner' in header and 'yllcorner' in header and 'cellsize' in header:
+                xll = header['xllcorner']
+                yll = header['yllcorner']
+                cellsize = header['cellsize']
+                
+                lon = np.linspace(xll, xll + ncols * cellsize, ncols)
+                lat = np.linspace(yll, yll + nrows * cellsize, nrows)
+                
+                # Handle nodata values
+                if 'nodata_value' in header:
+                    nodata = header['nodata_value']
+                    grid_array[grid_array == nodata] = np.nan
+                
+                return grid_array, lon, lat, (xll, yll, xll + ncols * cellsize, yll + nrows * cellsize)
+        
+        # If no proper header, try to use the data as-is
+        nrows, ncols = grid_array.shape
+        lon = np.linspace(0, ncols, ncols)
+        lat = np.linspace(0, nrows, nrows)
+        
+        return grid_array, lon, lat, (0, 0, ncols, nrows)
+        
+    except Exception as e:
+        st.error(f"Error reading grid file: {e}")
+        return None, None, None, None
+
 # Load data from GitHub
-if github_url and github_url != GITHUB_DATA_URL:
+if github_url:
     df = load_github_data(github_url)
-elif github_url == GITHUB_DATA_URL:
-    st.info("👆 Please update the GitHub URL with your actual data file")
-    df = None
 else:
     df = None
 
@@ -70,6 +133,32 @@ if df is not None:
             
             # Sidebar controls
             st.sidebar.header("🎛️ Map Controls")
+            
+            # Grid overlay option
+            st.sidebar.header("🌍 Grid Overlay")
+            grid_overlay = st.sidebar.checkbox("Add grid overlay", value=False)
+            
+            grid_file = None
+            if grid_overlay:
+                grid_file = st.sidebar.file_uploader(
+                    "Upload grid file (.grd, .txt, .asc)",
+                    type=['grd', 'txt', 'asc'],
+                    help="Upload ASCII grid file"
+                )
+                
+                if grid_file:
+                    grid_opacity = st.sidebar.slider(
+                        "Grid opacity",
+                        min_value=0.1,
+                        max_value=1.0,
+                        value=0.6,
+                        step=0.1
+                    )
+                    
+                    grid_colorscale = st.sidebar.selectbox(
+                        "Grid color scheme:",
+                        ["Viridis", "Plasma", "RdYlBu", "RdBu", "Spectral", "Terrain"]
+                    )
             
             # Color options
             color_options = {
@@ -113,8 +202,47 @@ if df is not None:
                 ["open-street-map", "satellite-streets", "stamen-terrain", "carto-positron"]
             )
             
+            # Load grid data if selected
+            grid_data = None
+            if grid_overlay and grid_file:
+                with st.spinner("Loading grid data..."):
+                    grid_values, grid_lon, grid_lat, grid_bounds = load_grid_file_simple(grid_file)
+                    if grid_values is not None:
+                        st.success("✅ Grid data loaded successfully")
+                        grid_data = (grid_values, grid_lon, grid_lat, grid_bounds)
+                        
+                        # Show grid info
+                        with st.expander("📊 Grid Data Info"):
+                            st.write(f"Grid dimensions: {grid_values.shape}")
+                            st.write(f"Value range: {np.nanmin(grid_values):.3f} to {np.nanmax(grid_values):.3f}")
+                            st.write(f"Bounds: {grid_bounds}")
+            
             # Create the interactive map
             st.header("🗺️ Interactive Genetic Data Map")
+            
+            # Create the map figure
+            fig = go.Figure()
+            
+            # Add grid overlay first (so points appear on top)
+            if grid_data:
+                grid_values, grid_lon, grid_lat, grid_bounds = grid_data
+                
+                # Add grid as heatmap
+                fig.add_trace(go.Heatmap(
+                    x=grid_lon,
+                    y=grid_lat, 
+                    z=grid_values,
+                    colorscale=grid_colorscale.lower(),
+                    opacity=grid_opacity,
+                    showscale=True,
+                    colorbar=dict(
+                        title="Grid Values",
+                        x=1.02,
+                        len=0.5
+                    ),
+                    hovertemplate='Lat: %{y:.4f}<br>Lon: %{x:.4f}<br>Value: %{z:.3f}<extra></extra>',
+                    name="Grid Data"
+                ))
             
             # Prepare hover data with your specified fields
             hover_data = []
@@ -139,6 +267,7 @@ if df is not None:
                 hover_data.append("<br>".join(hover_info))
             
             # Create the map
+            fig = go.Figure()
             fig = go.Figure()
             
             # Handle coloring
