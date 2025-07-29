@@ -6,16 +6,16 @@ import plotly.graph_objects as go
 
 # Configure the page
 st.set_page_config(
-    page_title="Yellowish Bird Genetic Data Map",
+    page_title="Yellow-breasted Chat Genoscape",
     page_icon="🐦",
     layout="wide"
 )
 
-st.title("🐦 Yellowish Bird Genetic Data Explorer")
+st.title("🐦 Yellow-breasted Chat Genoscape")
 st.markdown("Interactive map exploring genetic data and inversion genotypes across sampling locations")
 
 # Your GitHub data URL - update this with your actual URL
-GITHUB_DATA_URL = "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/data.csv"
+GITHUB_DATA_URL = "https://raw.githubusercontent.com/johannabeam/Interactive-Chatter/refs/heads/main/YBCHall_samples_metadata.csv"
 
 # Option to override the default URL
 st.sidebar.header("📡 Data Source")
