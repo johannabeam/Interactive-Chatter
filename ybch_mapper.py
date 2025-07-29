@@ -125,7 +125,7 @@ if df is not None:
             color_options = {
                 'Inversion Genotype (inv_k3)': 'inv_k3',
                 'State': 'State', 
-                'Population': 'pop2',
+                'Population': 'pop1',
                 'Climate': 'Climate',
                 'Sex': 'Sex'
             }
@@ -222,6 +222,8 @@ if df is not None:
                     hover_info.append(f"Population: {row['Population']}")
                 if 'Sex' in row and pd.notna(row['Sex']):
                     hover_info.append(f"Sex: {row['Sex']}")
+                if 'Climate' in row and pd.notna(row['Climate']):
+                    hover_info.append(f"Climate: {row['Climate']}")
                 if 'MEAN_DEPTH' in row and pd.notna(row['MEAN_DEPTH']):
                     hover_info.append(f"Mean Depth: {row['MEAN_DEPTH']:.2f}")
                 
@@ -237,7 +239,7 @@ if df is not None:
                     # Categorical coloring
                     unique_vals = df_clean[color_column].unique()
                     # Use a nice color palette
-                    colors = px.colors.qualitative.Set3
+                    colors = px.colors.qualitative.Bold
                     if len(unique_vals) > len(colors):
                         colors = colors * (len(unique_vals) // len(colors) + 1)
                     color_map = dict(zip(unique_vals, colors[:len(unique_vals)]))
@@ -285,7 +287,7 @@ if df is not None:
                         marker=dict(
                             size=sizes,
                             color=df_clean[color_column],
-                            colorscale='thermal',
+                            colorscale='Turbo',
                             showscale=True,
                             colorbar=dict(title=color_by)
                         ),
@@ -316,7 +318,134 @@ if df is not None:
                 )
             )
             
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key="main_map")
+            
+            # STRUCTURE-style Admixture Plot
+            if 'pop1' in df_clean.columns and 'pop2' in df_clean.columns:
+                st.header("🧬 Population Structure (ADMIXTURE)")
+                
+                # Sort samples for better visualization (optional)
+                sort_option = st.selectbox(
+                    "Sort samples by:",
+                    ["Original order", "Pop1 proportion", "Pop2 proportion", "Geographic (Longitude)", "Geographic (Latitude)"],
+                    help="Choose how to order samples in the structure plot"
+                )
+                
+                df_plot = df_clean.copy()
+                if sort_option == "Pop1 proportion":
+                    df_plot = df_plot.sort_values('pop1', ascending=False)
+                elif sort_option == "Pop2 proportion":
+                    df_plot = df_plot.sort_values('pop2', ascending=False)
+                elif sort_option == "Geographic (Longitude)":
+                    df_plot = df_plot.sort_values('Long')
+                elif sort_option == "Geographic (Latitude)":
+                    df_plot = df_plot.sort_values('Lat')
+                
+                # Reset index to get position for x-axis
+                df_plot = df_plot.reset_index(drop=True)
+                df_plot['x_position'] = range(len(df_plot))
+                
+                # Create STRUCTURE plot
+                fig_structure = go.Figure()
+                
+                # Add pop1 (bottom layer)
+                fig_structure.add_trace(go.Bar(
+                    x=df_plot['x_position'],
+                    y=df_plot['pop1'],
+                    name='Population 1',
+                    marker_color='#004488',
+                    hovertemplate='<b>%{customdata[0]}</b><br>' +
+                                 'Pop1: %{y:.3f}<br>' +
+                                 'Pop2: %{customdata[1]:.3f}<br>' +
+                                 'Location: %{customdata[2]}, %{customdata[3]}<br>' +
+                                 'Coordinates: %{customdata[4]:.4f}, %{customdata[5]:.4f}<extra></extra>',
+                    customdata=df_plot[['BGP_ID', 'pop2', 'CityTown', 'State', 'Lat', 'Long']].values
+                ))
+                
+                # Add pop2 (stacked on top)
+                fig_structure.add_trace(go.Bar(
+                    x=df_plot['x_position'],
+                    y=df_plot['pop2'],
+                    base=df_plot['pop1'],
+                    name='Population 2',
+                    marker_color='#5aae61',
+                    hovertemplate='<b>%{customdata[0]}</b><br>' +
+                                 'Pop1: %{customdata[1]:.3f}<br>' +
+                                 'Pop2: %{y:.3f}<br>' +
+                                 'Location: %{customdata[2]}, %{customdata[3]}<br>' +
+                                 'Coordinates: %{customdata[4]:.4f}, %{customdata[5]:.4f}<extra></extra>',
+                    customdata=df_plot[['BGP_ID', 'pop1', 'CityTown', 'State', 'Lat', 'Long']].values
+                ))
+                
+                # Update layout for STRUCTURE plot
+                fig_structure.update_layout(
+                    title="Population Admixture Proportions",
+                    xaxis_title="Individual Samples",
+                    yaxis_title="Ancestry Proportion",
+                    barmode='stack',
+                    height=400,
+                    showlegend=True,
+                    xaxis=dict(
+                        showticklabels=False,  # Hide individual sample labels
+                        showgrid=False
+                    ),
+                    yaxis=dict(
+                        range=[0, 1],
+                        showgrid=True,
+                        gridwidth=1,
+                        gridcolor='lightgray'
+                    ),
+                    plot_bgcolor='white',
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="right",
+                        x=1
+                    )
+                )
+                
+                st.plotly_chart(fig_structure, use_container_width=True, key="structure_plot")
+                
+                # Summary statistics
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    avg_pop1 = df_clean['pop1'].mean()
+                    st.metric("Average Pop1", f"{avg_pop1:.3f}")
+                
+                with col2:
+                    avg_pop2 = df_clean['pop2'].mean() 
+                    st.metric("Average Pop2", f"{avg_pop2:.3f}")
+                
+                with col3:
+                    # Count highly admixed individuals (0.3 < pop1 < 0.7)
+                    admixed = df_clean[(df_clean['pop1'] > 0.3) & (df_clean['pop1'] < 0.7)]
+                    st.metric("Admixed Individuals", f"{len(admixed)}")
+                
+                # Optional: Add population assignment by geographic region
+                if 'State' in df_clean.columns:
+                    st.subheader("📍 Population Structure by Geographic Region")
+                    
+                    # Calculate average admixture by state
+                    state_summary = df_clean.groupby('State').agg({
+                        'pop1': ['mean', 'std', 'count'],
+                        'pop2': ['mean', 'std']
+                    }).round(3)
+                    
+                    # Flatten column names
+                    state_summary.columns = ['Pop1_Mean', 'Pop1_Std', 'Sample_Count', 'Pop2_Mean', 'Pop2_Std']
+                    state_summary = state_summary.reset_index()
+                    
+                    # Display as interactive table
+                    st.dataframe(
+                        state_summary,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+            
+            else:
+                st.info("💡 Pop1 and Pop2 columns not found - upload data with admixture proportions to see STRUCTURE plot")
             
             # Summary Statistics
             st.header("📊 Data Summary")
