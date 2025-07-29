@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 
 # Configure the page
 st.set_page_config(
-    page_title="Yellow-breasted Chat Genoscape",
+    page_title="Yellowish Bird Genetic Data Map",
     page_icon="🐦",
     layout="wide"
 )
@@ -36,71 +36,26 @@ def load_github_data(url):
         st.error(f"Error loading data from GitHub: {e}")
         return None
 
-@st.cache_data
-def load_grid_file_simple(grid_file):
-    """Load ASCII grid file without rasterio"""
+def process_image_overlay(image_file):
+    """Process uploaded image for overlay"""
     try:
-        # Read the file content
-        content = grid_file.getvalue().decode('utf-8')
-        lines = content.strip().split('\n')
+        from PIL import Image
+        import base64
+        import io
         
-        # Try to parse as ASCII grid format
-        header = {}
-        data_start = 0
+        # Open and process the image
+        image = Image.open(image_file)
         
-        # Look for header information
-        for i, line in enumerate(lines):
-            if any(keyword in line.lower() for keyword in ['ncols', 'nrows', 'xllcorner', 'yllcorner', 'cellsize', 'nodata']):
-                parts = line.split()
-                if len(parts) >= 2:
-                    header[parts[0].lower()] = float(parts[1]) if '.' in parts[1] or 'e' in parts[1].lower() else int(parts[1])
-                data_start = i + 1
-            else:
-                break
+        # Convert to base64 for plotly
+        buffer = io.BytesIO()
+        image.save(buffer, format='PNG')
+        img_str = base64.b64encode(buffer.getvalue()).decode()
         
-        # Read the grid data
-        grid_data = []
-        for line in lines[data_start:]:
-            if line.strip():
-                row = [float(x) for x in line.split()]
-                grid_data.append(row)
-        
-        if not grid_data:
-            st.error("No grid data found in file")
-            return None, None, None, None
-        
-        grid_array = np.array(grid_data)
-        
-        # Create coordinate arrays
-        if 'ncols' in header and 'nrows' in header:
-            ncols = int(header['ncols'])
-            nrows = int(header['nrows'])
-            
-            if 'xllcorner' in header and 'yllcorner' in header and 'cellsize' in header:
-                xll = header['xllcorner']
-                yll = header['yllcorner']
-                cellsize = header['cellsize']
-                
-                lon = np.linspace(xll, xll + ncols * cellsize, ncols)
-                lat = np.linspace(yll, yll + nrows * cellsize, nrows)
-                
-                # Handle nodata values
-                if 'nodata_value' in header:
-                    nodata = header['nodata_value']
-                    grid_array[grid_array == nodata] = np.nan
-                
-                return grid_array, lon, lat, (xll, yll, xll + ncols * cellsize, yll + nrows * cellsize)
-        
-        # If no proper header, try to use the data as-is
-        nrows, ncols = grid_array.shape
-        lon = np.linspace(0, ncols, ncols)
-        lat = np.linspace(0, nrows, nrows)
-        
-        return grid_array, lon, lat, (0, 0, ncols, nrows)
+        return f"data:image/png;base64,{img_str}"
         
     except Exception as e:
-        st.error(f"Error reading grid file: {e}")
-        return None, None, None, None
+        st.error(f"Error processing image: {e}")
+        return None
 
 # Load data from GitHub
 if github_url:
@@ -134,30 +89,36 @@ if df is not None:
             # Sidebar controls
             st.sidebar.header("🎛️ Map Controls")
             
-            # Grid overlay option
-            st.sidebar.header("🌍 Grid Overlay")
-            grid_overlay = st.sidebar.checkbox("Add grid overlay", value=False)
+            # Image overlay option
+            st.sidebar.header("🖼️ Image Overlay")
+            image_overlay = st.sidebar.checkbox("Add image overlay", value=False)
             
-            grid_file = None
-            if grid_overlay:
-                grid_file = st.sidebar.file_uploader(
-                    "Upload grid file (.grd, .txt, .asc)",
-                    type=['grd', 'txt', 'asc'],
-                    help="Upload ASCII grid file"
+            image_file = None
+            if image_overlay:
+                image_file = st.sidebar.file_uploader(
+                    "Upload image file (.png, .jpg, .jpeg)",
+                    type=['png', 'jpg', 'jpeg'],
+                    help="Upload georeferenced image file"
                 )
                 
-                if grid_file:
-                    grid_opacity = st.sidebar.slider(
-                        "Grid opacity",
+                if image_file:
+                    st.sidebar.subheader("Image Coordinates")
+                    st.sidebar.markdown("*Enter the geographic bounds of your image:*")
+                    
+                    col1, col2 = st.sidebar.columns(2)
+                    with col1:
+                        west_bound = st.number_input("West (min longitude)", value=-125.0, step=0.1, format="%.4f")
+                        south_bound = st.number_input("South (min latitude)", value=32.0, step=0.1, format="%.4f")
+                    with col2:
+                        east_bound = st.number_input("East (max longitude)", value=-110.0, step=0.1, format="%.4f")
+                        north_bound = st.number_input("North (max latitude)", value=45.0, step=0.1, format="%.4f")
+                    
+                    image_opacity = st.sidebar.slider(
+                        "Image opacity",
                         min_value=0.1,
                         max_value=1.0,
                         value=0.6,
                         step=0.1
-                    )
-                    
-                    grid_colorscale = st.sidebar.selectbox(
-                        "Grid color scheme:",
-                        ["Viridis", "Plasma", "RdYlBu", "RdBu", "Spectral", "Terrain"]
                     )
             
             # Color options
@@ -202,20 +163,23 @@ if df is not None:
                 ["open-street-map", "satellite-streets", "stamen-terrain", "carto-positron"]
             )
             
-            # Load grid data if selected
-            grid_data = None
-            if grid_overlay and grid_file:
-                with st.spinner("Loading grid data..."):
-                    grid_values, grid_lon, grid_lat, grid_bounds = load_grid_file_simple(grid_file)
-                    if grid_values is not None:
-                        st.success("✅ Grid data loaded successfully")
-                        grid_data = (grid_values, grid_lon, grid_lat, grid_bounds)
+            # Process image overlay if selected
+            image_data = None
+            if image_overlay and image_file:
+                with st.spinner("Processing image..."):
+                    image_base64 = process_image_overlay(image_file)
+                    if image_base64:
+                        st.success("✅ Image processed successfully")
+                        image_data = {
+                            'source': image_base64,
+                            'bounds': (west_bound, south_bound, east_bound, north_bound),
+                            'opacity': image_opacity
+                        }
                         
-                        # Show grid info
-                        with st.expander("📊 Grid Data Info"):
-                            st.write(f"Grid dimensions: {grid_values.shape}")
-                            st.write(f"Value range: {np.nanmin(grid_values):.3f} to {np.nanmax(grid_values):.3f}")
-                            st.write(f"Bounds: {grid_bounds}")
+                        # Show image info
+                        with st.expander("🖼️ Image Overlay Info"):
+                            st.write(f"Bounds: West={west_bound}, South={south_bound}, East={east_bound}, North={north_bound}")
+                            st.write(f"Opacity: {image_opacity}")
             
             # Create the interactive map
             st.header("🗺️ Interactive Genetic Data Map")
@@ -223,26 +187,19 @@ if df is not None:
             # Create the map figure
             fig = go.Figure()
             
-            # Add grid overlay first (so points appear on top)
-            if grid_data:
-                grid_values, grid_lon, grid_lat, grid_bounds = grid_data
-                
-                # Add grid as heatmap
-                fig.add_trace(go.Heatmap(
-                    x=grid_lon,
-                    y=grid_lat, 
-                    z=grid_values,
-                    colorscale=grid_colorscale.lower(),
-                    opacity=grid_opacity,
-                    showscale=True,
-                    colorbar=dict(
-                        title="Grid Values",
-                        x=1.02,
-                        len=0.5
-                    ),
-                    hovertemplate='Lat: %{y:.4f}<br>Lon: %{x:.4f}<br>Value: %{z:.3f}<extra></extra>',
-                    name="Grid Data"
-                ))
+            # Add image overlay first (so points appear on top)
+            if image_data:
+                fig.add_layout_image(
+                    source=image_data['source'],
+                    xref="x",
+                    yref="y", 
+                    x=image_data['bounds'][0],  # west
+                    y=image_data['bounds'][1],  # south
+                    sizex=image_data['bounds'][2] - image_data['bounds'][0],  # width
+                    sizey=image_data['bounds'][3] - image_data['bounds'][1],  # height
+                    opacity=image_data['opacity'],
+                    layer="below"
+                )
             
             # Prepare hover data with your specified fields
             hover_data = []
