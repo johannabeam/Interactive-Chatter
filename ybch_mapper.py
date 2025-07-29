@@ -239,7 +239,7 @@ if df is not None:
                     # Categorical coloring
                     unique_vals = df_clean[color_column].unique()
                     # Use a nice color palette
-                    colors = px.colors.qualitative.Bold
+                    colors = px.colors.qualitative.Set1
                     if len(unique_vals) > len(colors):
                         colors = colors * (len(unique_vals) // len(colors) + 1)
                     color_map = dict(zip(unique_vals, colors[:len(unique_vals)]))
