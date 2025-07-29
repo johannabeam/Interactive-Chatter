@@ -125,7 +125,7 @@ if df is not None:
             color_options = {
                 'Inversion Genotype (inv_k3)': 'inv_k3',
                 'State': 'State', 
-                'Population': 'pop1',
+                'Population': 'pop2',
                 'Climate': 'Climate',
                 'Sex': 'Sex'
             }
@@ -256,7 +256,7 @@ if df is not None:
                                 sizes = ((sizes - df_clean[size_column].min()) / 
                                         (df_clean[size_column].max() - df_clean[size_column].min()) * 15) + 8
                             else:
-                                sizes = 10
+                                sizes = 15
                             
                             fig.add_trace(go.Scattermapbox(
                                 lat=subset_df['Lat'],
@@ -276,7 +276,7 @@ if df is not None:
                         sizes = df_clean[size_column]
                         sizes = ((sizes - sizes.min()) / (sizes.max() - sizes.min()) * 15) + 8
                     else:
-                        sizes = 10
+                        sizes = 15
                     
                     fig.add_trace(go.Scattermapbox(
                         lat=df_clean['Lat'],
