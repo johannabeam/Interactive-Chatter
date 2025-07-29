@@ -285,7 +285,7 @@ if df is not None:
                         marker=dict(
                             size=sizes,
                             color=df_clean[color_column],
-                            colorscale='Viridis',
+                            colorscale='thermal',
                             showscale=True,
                             colorbar=dict(title=color_by)
                         ),
