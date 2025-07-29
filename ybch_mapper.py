@@ -125,7 +125,7 @@ if df is not None:
             color_options = {
                 'Inversion Genotype (inv_k3)': 'inv_k3',
                 'State': 'State', 
-                'Population': 'pop1',
+                'Population': 'pop2',
                 'Climate': 'Climate',
                 'Sex': 'Sex'
             }
