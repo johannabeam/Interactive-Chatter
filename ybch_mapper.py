@@ -125,7 +125,7 @@ if df is not None:
             color_options = {
                 'Inversion Genotype (inv_k3)': 'inv_k3',
                 'State': 'State', 
-                'Population': 'pop2',
+                'Population': 'pop1',
                 'Climate': 'Climate',
                 'Sex': 'Sex'
             }
@@ -211,13 +211,17 @@ if df is not None:
                     f"Coordinates: {row['Lat']:.4f}, {row['Long']:.4f}"
                 ]
                 
+                # Add population proportions if available
+                if 'pop1' in row and pd.notna(row['pop1']):
+                    hover_info.append(f"Pop1: {row['pop1']:.3f}")
+                if 'pop2' in row and pd.notna(row['pop2']):
+                    hover_info.append(f"Pop2: {row['pop2']:.3f}")
+                
                 # Add additional info if available
                 if 'Population' in row and pd.notna(row['Population']):
                     hover_info.append(f"Population: {row['Population']}")
                 if 'Sex' in row and pd.notna(row['Sex']):
                     hover_info.append(f"Sex: {row['Sex']}")
-                if 'Climate' in row and pd.notna(row['Climate']):
-                    hover_info.append(f"Climate: {row['Climate']}")
                 if 'MEAN_DEPTH' in row and pd.notna(row['MEAN_DEPTH']):
                     hover_info.append(f"Mean Depth: {row['MEAN_DEPTH']:.2f}")
                 
@@ -252,7 +256,7 @@ if df is not None:
                                 sizes = ((sizes - df_clean[size_column].min()) / 
                                         (df_clean[size_column].max() - df_clean[size_column].min()) * 15) + 8
                             else:
-                                sizes = 15
+                                sizes = 10
                             
                             fig.add_trace(go.Scattermapbox(
                                 lat=subset_df['Lat'],
@@ -272,7 +276,7 @@ if df is not None:
                         sizes = df_clean[size_column]
                         sizes = ((sizes - sizes.min()) / (sizes.max() - sizes.min()) * 15) + 8
                     else:
-                        sizes = 15
+                        sizes = 10
                     
                     fig.add_trace(go.Scattermapbox(
                         lat=df_clean['Lat'],
