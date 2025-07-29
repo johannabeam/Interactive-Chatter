@@ -269,7 +269,7 @@ if df is not None:
                                     color=colors[i],
                                 ),
                                 text=subset_hover,
-                                hovertemplate='%{text}<extra></extra>',
+                                hovertemplate='<span style="color: black;">%{text}</span><extra></extra>',
                                 name=f"{val} (n={mask.sum()})"
                             ))
                 else:
@@ -292,7 +292,7 @@ if df is not None:
                             colorbar=dict(title=color_by)
                         ),
                         text=hover_data,
-                        hovertemplate='%{text}<extra></extra>',
+                        hovertemplate='<span style="color: black;">%{text}</span><extra></extra>',
                         name='Bird Samples',
                         showlegend=False
                     ))
@@ -354,11 +354,11 @@ if df is not None:
                     y=df_plot['pop1'],
                     name='Population 1',
                     marker_color='#004488',
-                    hovertemplate='<b>%{customdata[0]}</b><br>' +
-                                 'Pop1: %{y:.3f}<br>' +
-                                 'Pop2: %{customdata[1]:.3f}<br>' +
-                                 'Location: %{customdata[2]}, %{customdata[3]}<br>' +
-                                 'Coordinates: %{customdata[4]:.4f}, %{customdata[5]:.4f}<extra></extra>',
+                    hovertemplate='<span style="color: #000000;"><b>%{customdata[0]}</b></span><br>' +
+                                 '<span style="color: #000000;">Pop1: %{y:.3f}</span><br>' +
+                                 '<span style="color: #000000;">Pop2: %{customdata[1]:.3f}</span><br>' +
+                                 '<span style="color: #000000;">Location: %{customdata[2]}, %{customdata[3]}</span><br>' +
+                                '<span style="color: #000000;">Coordinates: %{customdata[4]:.4f}, %{customdata[5]:.4f}</span><extra></extra>',
                     customdata=df_plot[['BGP_ID', 'pop2', 'CityTown', 'State', 'Lat', 'Long']].values
                 ))
                 
@@ -369,11 +369,11 @@ if df is not None:
                     base=df_plot['pop1'],
                     name='Population 2',
                     marker_color='#5aae61',
-                    hovertemplate='<b>%{customdata[0]}</b><br>' +
-                                 'Pop1: %{customdata[1]:.3f}<br>' +
-                                 'Pop2: %{y:.3f}<br>' +
-                                 'Location: %{customdata[2]}, %{customdata[3]}<br>' +
-                                 'Coordinates: %{customdata[4]:.4f}, %{customdata[5]:.4f}<extra></extra>',
+                    hovertemplate='<span style="color: #000000;"><b>%{customdata[0]}</b></span><br>' +
+                                 '<span style="color: #000000;">Pop1: %{y:.3f}</span><br>' +
+                                 '<span style="color: #000000;">Pop2: %{customdata[1]:.3f}</span><br>' +
+                                 '<span style="color: #000000;">Location: %{customdata[2]}, %{customdata[3]}</span><br>' +
+                                '<span style="color: #000000;">Coordinates: %{customdata[4]:.4f}, %{customdata[5]:.4f}</span><extra></extra>',
                     customdata=df_plot[['BGP_ID', 'pop1', 'CityTown', 'State', 'Lat', 'Long']].values
                 ))
                 
