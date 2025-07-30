@@ -130,6 +130,10 @@ if df is not None:
                     st.sidebar.subheader("Image Coordinates")
                     st.sidebar.markdown("*Enter the geographic bounds of your range map:*")
                     
+                    # Show data bounds for reference
+                    if len(df_clean) > 0:
+                        st.sidebar.info(f"Your data spans:\nLat: {df_clean['Lat'].min():.2f} to {df_clean['Lat'].max():.2f}\nLon: {df_clean['Long'].min():.2f} to {df_clean['Long'].max():.2f}")
+                    
                     col1, col2 = st.sidebar.columns(2)
                     with col1:
                         west_bound = st.sidebar.number_input("West (min longitude)", value=-125.0, step=0.1, format="%.4f")
@@ -137,6 +141,22 @@ if df is not None:
                     with col2:
                         east_bound = st.sidebar.number_input("East (max longitude)", value=-73.9, step=0.1, format="%.4f")
                         north_bound = st.sidebar.number_input("North (max latitude)", value=51.5, step=0.1, format="%.4f")
+                    
+                    # Quick adjustment buttons
+                    st.sidebar.markdown("**Quick Adjustments:**")
+                    col1, col2, col3 = st.sidebar.columns(3)
+                    with col1:
+                        if st.sidebar.button("Move West"):
+                            west_bound -= 1.0
+                            east_bound -= 1.0
+                    with col2:
+                        if st.sidebar.button("Move North"):
+                            south_bound += 1.0
+                            north_bound += 1.0
+                    with col3:
+                        if st.sidebar.button("Move East"):
+                            west_bound += 1.0
+                            east_bound += 1.0
                     
                     image_opacity = st.sidebar.slider(
                         "Range map opacity",
