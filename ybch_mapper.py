@@ -417,18 +417,17 @@ if df is not None:
                         yanchor="bottom",
                         y=1.02,
                         xanchor="right",
-                        x=1,        
+                        x=1,
                         bgcolor="white",        # White legend background
                         bordercolor="black",    # Black border
                         borderwidth=1
                     ),
-                        hoverlabel=dict(
+                    hoverlabel=dict(
                         bgcolor="white",        # White hover background
                         font_color="black",     # Black text
                         bordercolor="black",    # Black border around hover
                         font_size=12
     )
-                    )
                 )
                 
                 st.plotly_chart(fig_structure, use_container_width=True, key="structure_plot")
