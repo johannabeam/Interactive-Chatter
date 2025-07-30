@@ -136,7 +136,7 @@ if df is not None:
             color_by = st.sidebar.selectbox(
                 "Color points by:",
                 list(available_color_options.keys()),
-                index=0
+                index=2
             )
             color_column = available_color_options[color_by]
             
@@ -160,7 +160,7 @@ if df is not None:
             # Map style
             map_style = st.sidebar.selectbox(
                 "Map style:",
-                ["open-street-map", "satellite-streets", "stamen-terrain", "carto-positron"]
+                ["open-street-map", "carto-positron"]
             )
             
             # Process image overlay if selected
@@ -328,6 +328,7 @@ if df is not None:
                 sort_option = st.selectbox(
                     "Sort samples by:",
                     ["Original order", "Pop1 proportion", "Pop2 proportion", "Geographic (Longitude)", "Geographic (Latitude)"],
+                    index=1,
                     help="Choose how to order samples in the structure plot"
                 )
                 
