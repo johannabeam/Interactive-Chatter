@@ -1,7 +1,15 @@
+# Existing requirements
 streamlit>=1.28.0
 pandas>=1.5.0
 python-docx>=0.8.11
 openpyxl>=3.1.0
+
+# New requirements for mapping
 plotly>=5.0.0
+folium>=0.14.0
+streamlit-folium>=0.13.0
 numpy>=1.21.0
+
+# Image processing
 Pillow>=9.0.0
+requests>=2.25.0

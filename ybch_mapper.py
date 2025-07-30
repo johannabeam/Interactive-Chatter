@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 
 # Configure the page
 st.set_page_config(
-    page_title="Yellow-breasted Chat Genoscape",
+    page_title="Yellowish Bird Genetic Data Map",
     page_icon="🐦",
     layout="wide"
 )
@@ -36,15 +36,24 @@ def load_github_data(url):
         st.error(f"Error loading data from GitHub: {e}")
         return None
 
-def process_image_overlay(image_file):
-    """Process uploaded image for overlay"""
+def process_image_overlay(image_source):
+    """Process image for overlay - handles both files and URLs"""
     try:
         from PIL import Image
         import base64
         import io
+        import requests
         
-        # Open and process the image
-        image = Image.open(image_file)
+        if isinstance(image_source, str):  # URL
+            # Download image from URL
+            response = requests.get(image_source)
+            if response.status_code == 200:
+                image = Image.open(io.BytesIO(response.content))
+            else:
+                st.error(f"Could not download image from URL: {response.status_code}")
+                return None
+        else:  # Uploaded file
+            image = Image.open(image_source)
         
         # Convert to base64 for plotly
         buffer = io.BytesIO()
@@ -90,36 +99,64 @@ if df is not None:
             st.sidebar.header("🎛️ Map Controls")
             
             # Image overlay option
-            st.sidebar.header("🖼️ Image Overlay")
-            image_overlay = st.sidebar.checkbox("Add image overlay", value=False)
+            st.sidebar.header("🖼️ Range Map Overlay")
+            image_overlay = st.sidebar.checkbox("Add range map overlay", value=True)  # Default to True
+            
+            # Default range map from your R plot
+            default_range_map = "https://raw.githubusercontent.com/johannabeam/Interactive-Chatter/main/maps/ybch_range_map.png"
             
             image_file = None
+            image_url = None
+            
             if image_overlay:
-                image_file = st.sidebar.file_uploader(
-                    "Upload image file (.png, .jpg, .jpeg)",
-                    type=['png', 'jpg', 'jpeg'],
-                    help="Upload georeferenced image file"
+                map_source = st.sidebar.radio(
+                    "Range map source:",
+                    ["Use Default Range Map", "Upload Custom Image", "Use Image URL"]
                 )
                 
-                if image_file:
+                if map_source == "Use Default Range Map":
+                    image_url = default_range_map
+                    st.sidebar.success("Using default YBCH range map")
+                    
+                    # Default coordinates - UPDATE THESE with your R plot extent!
+                    west_bound = -125.0  # Update with your extent_info[1,1]
+                    east_bound = -65.0   # Update with your extent_info[1,2]  
+                    south_bound = 20.0   # Update with your extent_info[2,1]
+                    north_bound = 50.0   # Update with your extent_info[2,2]
+                    
+                elif map_source == "Upload Custom Image":
+                    image_file = st.sidebar.file_uploader(
+                        "Upload image file (.png, .jpg, .jpeg)",
+                        type=['png', 'jpg', 'jpeg'],
+                        help="Upload georeferenced image file"
+                    )
+                    
+                elif map_source == "Use Image URL":
+                    image_url = st.sidebar.text_input(
+                        "Image URL:",
+                        placeholder="https://raw.githubusercontent.com/user/repo/main/image.png"
+                    )
+                
+                # Coordinate inputs (only show if not using default with known coords)
+                if map_source != "Use Default Range Map":
                     st.sidebar.subheader("Image Coordinates")
                     st.sidebar.markdown("*Enter the geographic bounds of your image:*")
                     
                     col1, col2 = st.sidebar.columns(2)
                     with col1:
-                        west_bound = st.number_input("West (min longitude)", value=-125.0, step=0.1, format="%.4f")
-                        south_bound = st.number_input("South (min latitude)", value=32.0, step=0.1, format="%.4f")
+                        west_bound = st.sidebar.number_input("West (min longitude)", value=-125.0, step=0.1, format="%.4f")
+                        south_bound = st.sidebar.number_input("South (min latitude)", value=20.0, step=0.1, format="%.4f")
                     with col2:
-                        east_bound = st.number_input("East (max longitude)", value=-110.0, step=0.1, format="%.4f")
-                        north_bound = st.number_input("North (max latitude)", value=45.0, step=0.1, format="%.4f")
-                    
-                    image_opacity = st.sidebar.slider(
-                        "Image opacity",
-                        min_value=0.1,
-                        max_value=1.0,
-                        value=0.6,
-                        step=0.1
-                    )
+                        east_bound = st.sidebar.number_input("East (max longitude)", value=-65.0, step=0.1, format="%.4f")
+                        north_bound = st.sidebar.number_input("North (max latitude)", value=50.0, step=0.1, format="%.4f")
+                
+                image_opacity = st.sidebar.slider(
+                    "Range map opacity",
+                    min_value=0.1,
+                    max_value=1.0,
+                    value=0.5,
+                    step=0.1
+                )
             
             # Color options
             color_options = {
@@ -136,7 +173,7 @@ if df is not None:
             color_by = st.sidebar.selectbox(
                 "Color points by:",
                 list(available_color_options.keys()),
-                index=2
+                index=0
             )
             color_column = available_color_options[color_by]
             
@@ -160,16 +197,17 @@ if df is not None:
             # Map style
             map_style = st.sidebar.selectbox(
                 "Map style:",
-                ["open-street-map", "carto-positron"]
+                ["open-street-map", "satellite-streets", "stamen-terrain", "carto-positron"]
             )
             
             # Process image overlay if selected
             image_data = None
-            if image_overlay and image_file:
-                with st.spinner("Processing image..."):
-                    image_base64 = process_image_overlay(image_file)
+            if image_overlay and (image_file or image_url):
+                with st.spinner("Processing range map..."):
+                    image_source = image_url if image_url else image_file
+                    image_base64 = process_image_overlay(image_source)
                     if image_base64:
-                        st.success("✅ Image processed successfully")
+                        st.success("✅ Range map loaded successfully")
                         image_data = {
                             'source': image_base64,
                             'bounds': (west_bound, south_bound, east_bound, north_bound),
@@ -177,9 +215,11 @@ if df is not None:
                         }
                         
                         # Show image info
-                        with st.expander("🖼️ Image Overlay Info"):
+                        with st.expander("🗺️ Range Map Info"):
                             st.write(f"Bounds: West={west_bound}, South={south_bound}, East={east_bound}, North={north_bound}")
                             st.write(f"Opacity: {image_opacity}")
+                            if image_url:
+                                st.write(f"Source: {image_url}")
             
             # Create the interactive map
             st.header("🗺️ Interactive Genetic Data Map")
@@ -187,7 +227,7 @@ if df is not None:
             # Create the map figure
             fig = go.Figure()
             
-            # Add image overlay first (so points appear on top)
+            # Add range map overlay first (so points appear on top)
             if image_data:
                 fig.add_layout_image(
                     source=image_data['source'],
@@ -226,13 +266,6 @@ if df is not None:
                     hover_info.append(f"Climate: {row['Climate']}")
                 if 'MEAN_DEPTH' in row and pd.notna(row['MEAN_DEPTH']):
                     hover_info.append(f"Mean Depth: {row['MEAN_DEPTH']:.2f}")
-                if 'Month' in row and pd.notna(row['Month']) and 'Day' in row and pd.notna(row['Day']):
-                    month_names = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-                    month = int(row['Month'])
-                    day = int(row['Day'])
-                    month_name = month_names[month] if 1 <= month <= 12 else str(month)
-                    hover_info.append(f"Date: {month_name} {day}")
                 
                 hover_data.append("<br>".join(hover_info))
             
@@ -276,7 +309,7 @@ if df is not None:
                                     color=colors[i],
                                 ),
                                 text=subset_hover,
-                                hovertemplate='<span style="color: black;">%{text}</span><extra></extra>',
+                                hovertemplate='%{text}<extra></extra>',
                                 name=f"{val} (n={mask.sum()})"
                             ))
                 else:
@@ -299,7 +332,7 @@ if df is not None:
                             colorbar=dict(title=color_by)
                         ),
                         text=hover_data,
-                        hovertemplate='<span style="color: black;">%{text}</span><extra></extra>',
+                        hovertemplate='%{text}<extra></extra>',
                         name='Bird Samples',
                         showlegend=False
                     ))
@@ -321,16 +354,8 @@ if df is not None:
                     y=0.99,
                     xanchor="left", 
                     x=0.01,
-                    bgcolor="white",
-                    bordercolor="black",
-                    borderwidth=1
-                ),
-                    hoverlabel=dict(
-                    bgcolor="white",        # White hover background
-                    font_color="black",     # Black text
-                    bordercolor="black",    # Black border around hover
-                    font_size=12
-    )
+                    bgcolor="rgba(255,255,255,0.8)"
+                )
             )
             
             st.plotly_chart(fig, use_container_width=True, key="main_map")
@@ -343,7 +368,6 @@ if df is not None:
                 sort_option = st.selectbox(
                     "Sort samples by:",
                     ["Original order", "Pop1 proportion", "Pop2 proportion", "Geographic (Longitude)", "Geographic (Latitude)"],
-                    index=1,
                     help="Choose how to order samples in the structure plot"
                 )
                 
@@ -369,12 +393,12 @@ if df is not None:
                     x=df_plot['x_position'],
                     y=df_plot['pop1'],
                     name='Population 1',
-                    marker_color='#004488',
-                    hovertemplate='<span style="color: #000000;"><b>%{customdata[0]}</b></span><br>' +
-                                 '<span style="color: #000000;">Pop1: %{y:.3f}</span><br>' +
-                                 '<span style="color: #000000;">Pop2: %{customdata[1]:.3f}</span><br>' +
-                                 '<span style="color: #000000;">Location: %{customdata[2]}, %{customdata[3]}</span><br>' +
-                                '<span style="color: #000000;">Coordinates: %{customdata[4]:.4f}, %{customdata[5]:.4f}</span><extra></extra>',
+                    marker_color='#1f77b4',
+                    hovertemplate='<b>%{customdata[0]}</b><br>' +
+                                 'Pop1: %{y:.3f}<br>' +
+                                 'Pop2: %{customdata[1]:.3f}<br>' +
+                                 'Location: %{customdata[2]}, %{customdata[3]}<br>' +
+                                 'Coordinates: %{customdata[4]:.4f}, %{customdata[5]:.4f}<extra></extra>',
                     customdata=df_plot[['BGP_ID', 'pop2', 'CityTown', 'State', 'Lat', 'Long']].values
                 ))
                 
@@ -384,12 +408,12 @@ if df is not None:
                     y=df_plot['pop2'],
                     base=df_plot['pop1'],
                     name='Population 2',
-                    marker_color='#5aae61',
-                    hovertemplate='<span style="color: #000000;"><b>%{customdata[0]}</b></span><br>' +
-                                 '<span style="color: #000000;">Pop1: %{y:.3f}</span><br>' +
-                                 '<span style="color: #000000;">Pop2: %{customdata[1]:.3f}</span><br>' +
-                                 '<span style="color: #000000;">Location: %{customdata[2]}, %{customdata[3]}</span><br>' +
-                                '<span style="color: #000000;">Coordinates: %{customdata[4]:.4f}, %{customdata[5]:.4f}</span><extra></extra>',
+                    marker_color='#ff7f0e',
+                    hovertemplate='<b>%{customdata[0]}</b><br>' +
+                                 'Pop1: %{customdata[1]:.3f}<br>' +
+                                 'Pop2: %{y:.3f}<br>' +
+                                 'Location: %{customdata[2]}, %{customdata[3]}<br>' +
+                                 'Coordinates: %{customdata[4]:.4f}, %{customdata[5]:.4f}<extra></extra>',
                     customdata=df_plot[['BGP_ID', 'pop1', 'CityTown', 'State', 'Lat', 'Long']].values
                 ))
                 
@@ -413,26 +437,12 @@ if df is not None:
                     ),
                     plot_bgcolor='white',
                     legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1,
-                    bgcolor="white",
-                    bordercolor="black",
-                    borderwidth=1,
-                    font=dict(
-                        color="black",      # This fixes the white text!
-                        size=12,           # Optional: adjust font size
-                        family="Arial"     # Optional: change font family
-    )
-),
-                    hoverlabel=dict(
-                        bgcolor="white",        # White hover background
-                        font_color="black",     # Black text
-                        bordercolor="black",    # Black border around hover
-                        font_size=12
-    )
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="right",
+                        x=1
+                    )
                 )
                 
                 st.plotly_chart(fig_structure, use_container_width=True, key="structure_plot")
