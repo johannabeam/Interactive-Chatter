@@ -1,50 +1,4 @@
-# Configure map layout
-            center_lat = df_clean['Lat'].mean()
-            center_lon = df_clean['Long'].mean()
-            
-            fig.update_layout(
-                mapbox=dict(
-                    style=map_style,
-                    center=dict(lat=center_lat, lon=center_lon),
-                    zoom=5
-                ),
-                height=700,
-                margin=dict(l=0, r=0, t=0, b=0),
-                legend=dict(
-                    yanchor="top",
-                    y=0.99,
-                    xanchor="left", 
-                    x=0.01,
-                    bgcolor="white",
-                    bordercolor="black",
-                    borderwidth=1
-                ),
-                hoverlabel=dict(
-                    bgcolor="white",        # White hover background
-                    font_color="black",     # Black text
-                    bordercolor="black",    # Black border around hover
-                    font_size=12
-                )
-            )
-            
-            # Add range map overlay after mapbox is configured
-            if image_data:
-                st.write(f"Debug: Adding image overlay after mapbox setup")  # Debug
-                try:
-                    fig.add_layout_image(
-                        source=image_data['source'],
-                        xref="paper",       # Use paper coordinates (0-1)
-                        yref="paper",       # Use paper coordinates (0-1)
-                        x=0,                # Left edge
-                        y=0,                # Bottom edge  
-                        sizex=1,            # Full width
-                        sizey=1,            # Full height
-                        opacity=image_data['opacity'],
-                        layer="below"
-                    )
-                    st.write("Debug: Image overlay added successfully")
-                except Exception as e:
-                    st.error(f"Error adding image overlay: {e}")import streamlit as st
+import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -144,9 +98,9 @@ if df is not None:
             # Sidebar controls
             st.sidebar.header("🎛️ Map Controls")
             
-            # Range Map overlay option - UPDATED
+            # Range Map overlay option
             st.sidebar.header("🖼️ Range Map Overlay")
-            image_overlay = st.sidebar.checkbox("Add range map overlay", value=True)  # Default to True
+            image_overlay = st.sidebar.checkbox("Add range map overlay", value=True)
             
             # Default range map from your R plot
             default_range_map = "https://raw.githubusercontent.com/johannabeam/Interactive-Chatter/refs/heads/main/ybch_genoscape.png"
@@ -163,7 +117,7 @@ if df is not None:
                 if map_source == "Use Default Range Map":
                     image_url = default_range_map
                     st.sidebar.success("Using default YBCH range map")
-                    st.sidebar.write(f"URL: {image_url}")  # Debug info
+                    st.sidebar.write(f"URL: {image_url}")
                     
                     # Default coordinates from your R plot extent
                     west_bound = -125.0
@@ -247,12 +201,12 @@ if df is not None:
                 ["open-street-map", "carto-positron"]
             )
             
-            # Process image overlay if selected - UPDATED
+            # Process image overlay if selected
             image_data = None
             if image_overlay and (image_file or image_url):
                 with st.spinner("Processing range map..."):
                     image_source = image_url if image_url else image_file
-                    st.write(f"Debug: Processing image from: {image_source if isinstance(image_source, str) else 'uploaded file'}")  # Debug
+                    st.write(f"Debug: Processing image from: {image_source if isinstance(image_source, str) else 'uploaded file'}")
                     image_base64 = process_image_overlay(image_source)
                     if image_base64:
                         st.success("✅ Range map loaded successfully")
@@ -268,7 +222,7 @@ if df is not None:
                             st.write(f"Opacity: {image_opacity}")
                             if image_url:
                                 st.write(f"Source: {image_url}")
-                            st.write(f"Image data loaded: {len(image_base64) if image_base64 else 0} characters")  # Debug
+                            st.write(f"Image data loaded: {len(image_base64) if image_base64 else 0} characters")
                     else:
                         st.error("Failed to process range map")
             
@@ -277,15 +231,6 @@ if df is not None:
             
             # Create the map figure
             fig = go.Figure()
-            
-            # Add range map overlay first (so points appear on top) - UPDATED
-            if image_data:
-                st.write(f"Debug: Adding image overlay with bounds {image_data['bounds']}")  # Debug
-                # For mapbox, we need to add the image as a mapbox layer, not layout image
-                # Let's try a different approach using a transparent scatter trace first
-                pass  # We'll add the image overlay after the mapbox is configured
-            else:
-                st.write("Debug: No image data to overlay")  # Debug
             
             # Prepare hover data with your specified fields
             hover_data = []
@@ -407,13 +352,32 @@ if df is not None:
                     bordercolor="black",
                     borderwidth=1
                 ),
-                    hoverlabel=dict(
-                    bgcolor="white",        # White hover background
-                    font_color="black",     # Black text
-                    bordercolor="black",    # Black border around hover
+                hoverlabel=dict(
+                    bgcolor="white",
+                    font_color="black",
+                    bordercolor="black",
                     font_size=12
-    )
+                )
             )
+            
+            # Add range map overlay after mapbox is configured
+            if image_data:
+                st.write(f"Debug: Adding image overlay after mapbox setup")
+                try:
+                    fig.add_layout_image(
+                        source=image_data['source'],
+                        xref="paper",
+                        yref="paper",
+                        x=0,
+                        y=0,
+                        sizex=1,
+                        sizey=1,
+                        opacity=image_data['opacity'],
+                        layer="below"
+                    )
+                    st.write("Debug: Image overlay added successfully")
+                except Exception as e:
+                    st.error(f"Error adding image overlay: {e}")
             
             st.plotly_chart(fig, use_container_width=True, key="main_map")
             
@@ -484,7 +448,7 @@ if df is not None:
                     height=400,
                     showlegend=True,
                     xaxis=dict(
-                        showticklabels=False,  # Hide individual sample labels
+                        showticklabels=False,
                         showgrid=False
                     ),
                     yaxis=dict(
@@ -495,26 +459,26 @@ if df is not None:
                     ),
                     plot_bgcolor='white',
                     legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1,
-                    bgcolor="white",
-                    bordercolor="black",
-                    borderwidth=1,
-                    font=dict(
-                        color="black",      # This fixes the white text!
-                        size=12,           # Optional: adjust font size
-                        family="Arial"     # Optional: change font family
-    )
-),
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="right",
+                        x=1,
+                        bgcolor="white",
+                        bordercolor="black",
+                        borderwidth=1,
+                        font=dict(
+                            color="black",
+                            size=12,
+                            family="Arial"
+                        )
+                    ),
                     hoverlabel=dict(
-                        bgcolor="white",        # White hover background
-                        font_color="black",     # Black text
-                        bordercolor="black",    # Black border around hover
+                        bgcolor="white",
+                        font_color="black",
+                        bordercolor="black",
                         font_size=12
-    )
+                    )
                 )
                 
                 st.plotly_chart(fig_structure, use_container_width=True, key="structure_plot")
@@ -668,11 +632,6 @@ with st.expander("📋 How to set up your data on GitHub"):
     - **Custom upload**: Upload your own range map image
     - **URL support**: Link to images hosted online
     - **Adjustable opacity**: Control transparency of range overlay
-    
-    ### Tips:
-    - Make sure your repository is public for the raw URL to work
-    - The app will cache your data for faster loading
-    - Range map will appear as background layer with genetic data on top
     """)
 
 # Footer
