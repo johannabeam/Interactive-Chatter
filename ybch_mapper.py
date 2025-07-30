@@ -49,22 +49,80 @@ def process_image_overlay(image_source):
             response = requests.get(image_source)
             if response.status_code == 200:
                 image = Image.open(io.BytesIO(response.content))
+                geotiff_bounds = None
             else:
                 st.error(f"Could not download image from URL: {response.status_code}")
-                return None
+                return None, None
         else:  # Uploaded file
-            image = Image.open(image_source)
+            # Check if it's a GeoTIFF
+            file_name = image_source.name.lower()
+            if file_name.endswith(('.tif', '.tiff')):
+                # Try to extract geographic bounds from GeoTIFF
+                try:
+                    import tempfile
+                    import os
+                    
+                    # Save uploaded file temporarily
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.tif') as tmp_file:
+                        tmp_file.write(image_source.getvalue())
+                        tmp_path = tmp_file.name
+                    
+                    # Try to read with rasterio to get bounds
+                    try:
+                        import rasterio
+                        with rasterio.open(tmp_path) as src:
+                            bounds = src.bounds
+                            geotiff_bounds = (bounds.left, bounds.bottom, bounds.right, bounds.top)
+                            st.success(f"✅ GeoTIFF bounds detected: {geotiff_bounds}")
+                            
+                            # Convert to PIL Image
+                            img_array = src.read()
+                            if img_array.shape[0] == 3:  # RGB
+                                img_array = img_array.transpose(1, 2, 0)
+                            elif img_array.shape[0] == 4:  # RGBA
+                                img_array = img_array.transpose(1, 2, 0)
+                            else:  # Single band - convert to RGB
+                                img_array = img_array[0]
+                                img_array = np.stack([img_array, img_array, img_array], axis=-1)
+                            
+                            # Normalize to 0-255 if needed
+                            if img_array.max() > 255:
+                                img_array = (img_array / img_array.max() * 255).astype(np.uint8)
+                            
+                            image = Image.fromarray(img_array.astype(np.uint8))
+                            
+                    except ImportError:
+                        st.warning("rasterio not available - treating as regular image")
+                        image = Image.open(io.BytesIO(image_source.getvalue()))
+                        geotiff_bounds = None
+                    except Exception as e:
+                        st.warning(f"Could not read GeoTIFF metadata: {e} - treating as regular image")
+                        image = Image.open(io.BytesIO(image_source.getvalue()))
+                        geotiff_bounds = None
+                    finally:
+                        # Clean up temp file
+                        if 'tmp_path' in locals():
+                            os.unlink(tmp_path)
+                            
+                except Exception as e:
+                    st.warning(f"GeoTIFF processing failed: {e} - treating as regular image")
+                    image = Image.open(image_source)
+                    geotiff_bounds = None
+            else:
+                # Regular image file
+                image = Image.open(image_source)
+                geotiff_bounds = None
         
         # Convert to base64 for plotly
         buffer = io.BytesIO()
         image.save(buffer, format='PNG')
         img_str = base64.b64encode(buffer.getvalue()).decode()
         
-        return f"data:image/png;base64,{img_str}"
+        return f"data:image/png;base64,{img_str}", geotiff_bounds
         
     except Exception as e:
         st.error(f"Error processing image: {e}")
-        return None
+        return None, None
 
 # Load data from GitHub
 if github_url:
