@@ -144,19 +144,64 @@ if df is not None:
                     
                     # Quick adjustment buttons
                     st.sidebar.markdown("**Quick Adjustments:**")
+                    
+                    # Position adjustments
                     col1, col2, col3 = st.sidebar.columns(3)
                     with col1:
-                        if st.sidebar.button("Move West"):
-                            west_bound -= 1.0
-                            east_bound -= 1.0
+                        if st.sidebar.button("⬅️ Move West"):
+                            west_bound -= 5.0
+                            east_bound -= 5.0
                     with col2:
-                        if st.sidebar.button("Move North"):
-                            south_bound += 1.0
-                            north_bound += 1.0
+                        if st.sidebar.button("⬆️ Move North"):
+                            south_bound += 5.0
+                            north_bound += 5.0
                     with col3:
-                        if st.sidebar.button("Move East"):
-                            west_bound += 1.0
-                            east_bound += 1.0
+                        if st.sidebar.button("➡️ Move East"):
+                            west_bound += 5.0
+                            east_bound += 5.0
+                    
+                    # Size adjustments
+                    st.sidebar.markdown("**Resize Image:**")
+                    col1, col2 = st.sidebar.columns(2)
+                    with col1:
+                        if st.sidebar.button("🔍 Zoom In"):
+                            # Make image smaller (zoom in)
+                            center_lat = (north_bound + south_bound) / 2
+                            center_lon = (east_bound + west_bound) / 2
+                            lat_range = (north_bound - south_bound) * 0.8
+                            lon_range = (east_bound - west_bound) * 0.8
+                            north_bound = center_lat + lat_range/2
+                            south_bound = center_lat - lat_range/2
+                            east_bound = center_lon + lon_range/2
+                            west_bound = center_lon - lon_range/2
+                    with col2:
+                        if st.sidebar.button("🔍 Zoom Out"):
+                            # Make image bigger (zoom out)
+                            center_lat = (north_bound + south_bound) / 2
+                            center_lon = (east_bound + west_bound) / 2
+                            lat_range = (north_bound - south_bound) * 1.2
+                            lon_range = (east_bound - west_bound) * 1.2
+                            north_bound = center_lat + lat_range/2
+                            south_bound = center_lat - lat_range/2
+                            east_bound = center_lon + lon_range/2
+                            west_bound = center_lon - lon_range/2
+                    
+                    # Preset buttons for common ranges
+                    st.sidebar.markdown("**Preset Ranges:**")
+                    col1, col2 = st.sidebar.columns(2)
+                    with col1:
+                        if st.sidebar.button("🌎 North America"):
+                            west_bound = -130.0
+                            east_bound = -60.0
+                            south_bound = 20.0
+                            north_bound = 60.0
+                    with col2:
+                        if st.sidebar.button("🎯 Fit to Data"):
+                            margin = 3.0
+                            west_bound = df_clean['Long'].min() - margin
+                            east_bound = df_clean['Long'].max() + margin
+                            south_bound = df_clean['Lat'].min() - margin
+                            north_bound = df_clean['Lat'].max() + margin
                     
                     image_opacity = st.sidebar.slider(
                         "Range map opacity",
@@ -225,11 +270,33 @@ if df is not None:
                         
                         # Show image info
                         with st.expander("🗺️ Range Map Info"):
-                            st.write(f"Bounds: West={west_bound}, South={south_bound}, East={east_bound}, North={north_bound}")
+                            st.write(f"**Image Bounds:** West={west_bound}, South={south_bound}, East={east_bound}, North={north_bound}")
+                            st.write(f"**Your Data Bounds:** West={df_clean['Long'].min():.2f}, South={df_clean['Lat'].min():.2f}, East={df_clean['Long'].max():.2f}, North={df_clean['Lat'].max():.2f}")
                             st.write(f"Opacity: {image_opacity}")
                             if image_url:
                                 st.write(f"Source: {image_url}")
                             st.write(f"Image data loaded: {len(image_base64) if image_base64 else 0} characters")
+                            
+                            # Show coordinate differences
+                            west_diff = west_bound - df_clean['Long'].min()
+                            east_diff = east_bound - df_clean['Long'].max()
+                            south_diff = south_bound - df_clean['Lat'].min()
+                            north_diff = north_bound - df_clean['Lat'].max()
+                            
+                            st.write("**Coordinate Differences (Image - Data):**")
+                            st.write(f"West: {west_diff:.2f}°, East: {east_diff:.2f}°")
+                            st.write(f"South: {south_diff:.2f}°, North: {north_diff:.2f}°")
+                            
+                            if abs(west_diff) > 2 or abs(east_diff) > 2 or abs(south_diff) > 2 or abs(north_diff) > 2:
+                                st.warning("⚠️ Large coordinate differences detected. Try adjusting the image bounds.")
+                                
+                            # Suggested adjustments
+                            st.write("**Suggested Image Bounds (based on your data + margin):**")
+                            suggested_west = df_clean['Long'].min() - 5
+                            suggested_east = df_clean['Long'].max() + 5
+                            suggested_south = df_clean['Lat'].min() - 5
+                            suggested_north = df_clean['Lat'].max() + 5
+                            st.code(f"West: {suggested_west:.1f}, East: {suggested_east:.1f}, South: {suggested_south:.1f}, North: {suggested_north:.1f}")
                     else:
                         st.error("Failed to process range map")
             
