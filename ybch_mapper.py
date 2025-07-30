@@ -100,10 +100,7 @@ if df is not None:
             
             # Range Map overlay option
             st.sidebar.header("🖼️ Range Map Overlay")
-            image_overlay = st.sidebar.checkbox("Add range map overlay", value=True)
-            
-            # Default range map from your R plot
-            default_range_map = "https://raw.githubusercontent.com/johannabeam/Interactive-Chatter/refs/heads/main/ybch_genoscape.png"
+            image_overlay = st.sidebar.checkbox("Add range map overlay", value=False)
             
             image_file = None
             image_url = None
@@ -111,37 +108,27 @@ if df is not None:
             if image_overlay:
                 map_source = st.sidebar.radio(
                     "Range map source:",
-                    ["Use Default Range Map", "Upload Custom Image", "Use Image URL"]
+                    ["Upload Custom Image", "Use Image URL"]
                 )
                 
-                if map_source == "Use Default Range Map":
-                    image_url = default_range_map
-                    st.sidebar.success("Using default YBCH range map")
-                    st.sidebar.write(f"URL: {image_url}")
-                    
-                    # Default coordinates from your R plot extent
-                    west_bound = -125.0
-                    east_bound = -73.9
-                    south_bound = 18.4  
-                    north_bound = 51.5
-                    
-                elif map_source == "Upload Custom Image":
+                if map_source == "Upload Custom Image":
                     image_file = st.sidebar.file_uploader(
-                        "Upload image file (.png, .jpg, .jpeg)",
+                        "Upload range map (.png, .jpg, .jpeg)",
                         type=['png', 'jpg', 'jpeg'],
-                        help="Upload georeferenced image file"
+                        help="Upload your range map image file"
                     )
                     
                 elif map_source == "Use Image URL":
                     image_url = st.sidebar.text_input(
                         "Image URL:",
-                        placeholder="https://raw.githubusercontent.com/user/repo/main/image.png"
+                        placeholder="https://raw.githubusercontent.com/user/repo/main/image.png",
+                        help="Enter direct URL to your range map image"
                     )
                 
-                # Coordinate inputs (only show if not using default with known coords)
-                if map_source != "Use Default Range Map":
+                # Coordinate inputs
+                if image_file or image_url:
                     st.sidebar.subheader("Image Coordinates")
-                    st.sidebar.markdown("*Enter the geographic bounds of your image:*")
+                    st.sidebar.markdown("*Enter the geographic bounds of your range map:*")
                     
                     col1, col2 = st.sidebar.columns(2)
                     with col1:
@@ -150,14 +137,14 @@ if df is not None:
                     with col2:
                         east_bound = st.sidebar.number_input("East (max longitude)", value=-73.9, step=0.1, format="%.4f")
                         north_bound = st.sidebar.number_input("North (max latitude)", value=51.5, step=0.1, format="%.4f")
-                
-                image_opacity = st.sidebar.slider(
-                    "Range map opacity",
-                    min_value=0.1,
-                    max_value=1.0,
-                    value=0.5,
-                    step=0.1
-                )
+                    
+                    image_opacity = st.sidebar.slider(
+                        "Range map opacity",
+                        min_value=0.1,
+                        max_value=1.0,
+                        value=0.5,
+                        step=0.1
+                    )
             
             # Color options
             color_options = {
