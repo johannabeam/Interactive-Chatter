@@ -206,6 +206,7 @@ if df is not None:
             if image_overlay and (image_file or image_url):
                 with st.spinner("Processing range map..."):
                     image_source = image_url if image_url else image_file
+                    st.write(f"Debug: Processing image from: {image_source if isinstance(image_source, str) else 'uploaded file'}")  # Debug
                     image_base64 = process_image_overlay(image_source)
                     if image_base64:
                         st.success("✅ Range map loaded successfully")
@@ -221,6 +222,9 @@ if df is not None:
                             st.write(f"Opacity: {image_opacity}")
                             if image_url:
                                 st.write(f"Source: {image_url}")
+                            st.write(f"Image data loaded: {len(image_base64) if image_base64 else 0} characters")  # Debug
+                    else:
+                        st.error("Failed to process range map")
             
             # Create the interactive map
             st.header("🗺️ Interactive Genetic Data Map")
@@ -230,10 +234,11 @@ if df is not None:
             
             # Add range map overlay first (so points appear on top) - UPDATED
             if image_data:
+                st.write(f"Debug: Adding image overlay with bounds {image_data['bounds']}")  # Debug
                 fig.add_layout_image(
                     source=image_data['source'],
-                    xref="x",
-                    yref="y", 
+                    xref="lon",     # Use mapbox coordinates
+                    yref="lat",     # Use mapbox coordinates
                     x=image_data['bounds'][0],  # west
                     y=image_data['bounds'][1],  # south
                     sizex=image_data['bounds'][2] - image_data['bounds'][0],  # width
@@ -241,6 +246,8 @@ if df is not None:
                     opacity=image_data['opacity'],
                     layer="below"
                 )
+            else:
+                st.write("Debug: No image data to overlay")  # Debug
             
             # Prepare hover data with your specified fields
             hover_data = []
@@ -276,10 +283,6 @@ if df is not None:
                     hover_info.append(f"Date: {month_name} {day}")
                 
                 hover_data.append("<br>".join(hover_info))
-            
-            # Create the map
-            fig = go.Figure()
-            fig = go.Figure()
             
             # Handle coloring
             if color_column in df_clean.columns:
