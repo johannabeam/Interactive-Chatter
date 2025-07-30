@@ -185,7 +185,7 @@ if df is not None:
             # Map style
             map_style = st.sidebar.selectbox(
                 "Map style:",
-                ["open-street-map", "carto-positron"]
+                ["Plotly (with image overlay)", "Mapbox (no image overlay)"]
             )
             
             # Process image overlay if selected
@@ -281,18 +281,33 @@ if df is not None:
                             else:
                                 sizes = 15
                             
-                            fig.add_trace(go.Scattermapbox(
-                                lat=subset_df['Lat'],
-                                lon=subset_df['Long'],
-                                mode='markers',
-                                marker=dict(
-                                    size=sizes,
-                                    color=colors[i],
-                                ),
-                                text=subset_hover,
-                                hovertemplate='<span style="color: black;">%{text}</span><extra></extra>',
-                                name=f"{val} (n={mask.sum()})"
-                            ))
+                            # Choose plot type based on map style
+                            if map_style == "Plotly (with image overlay)":
+                                fig.add_trace(go.Scatter(
+                                    x=subset_df['Long'],
+                                    y=subset_df['Lat'],
+                                    mode='markers',
+                                    marker=dict(
+                                        size=sizes,
+                                        color=colors[i],
+                                    ),
+                                    text=subset_hover,
+                                    hovertemplate='<span style="color: black;">%{text}</span><extra></extra>',
+                                    name=f"{val} (n={mask.sum()})"
+                                ))
+                            else:
+                                fig.add_trace(go.Scattermapbox(
+                                    lat=subset_df['Lat'],
+                                    lon=subset_df['Long'],
+                                    mode='markers',
+                                    marker=dict(
+                                        size=sizes,
+                                        color=colors[i],
+                                    ),
+                                    text=subset_hover,
+                                    hovertemplate='<span style="color: black;">%{text}</span><extra></extra>',
+                                    name=f"{val} (n={mask.sum()})"
+                                ))
                 else:
                     # Numerical coloring - single trace with colorscale
                     if size_column and size_column in df_clean.columns:
@@ -301,22 +316,41 @@ if df is not None:
                     else:
                         sizes = 15
                     
-                    fig.add_trace(go.Scattermapbox(
-                        lat=df_clean['Lat'],
-                        lon=df_clean['Long'],
-                        mode='markers',
-                        marker=dict(
-                            size=sizes,
-                            color=df_clean[color_column],
-                            colorscale='Turbo',
-                            showscale=True,
-                            colorbar=dict(title=color_by)
-                        ),
-                        text=hover_data,
-                        hovertemplate='<span style="color: black;">%{text}</span><extra></extra>',
-                        name='Bird Samples',
-                        showlegend=False
-                    ))
+                    # Choose plot type based on map style
+                    if map_style == "Plotly (with image overlay)":
+                        fig.add_trace(go.Scatter(
+                            x=df_clean['Long'],
+                            y=df_clean['Lat'],
+                            mode='markers',
+                            marker=dict(
+                                size=sizes,
+                                color=df_clean[color_column],
+                                colorscale='Turbo',
+                                showscale=True,
+                                colorbar=dict(title=color_by)
+                            ),
+                            text=hover_data,
+                            hovertemplate='<span style="color: black;">%{text}</span><extra></extra>',
+                            name='Bird Samples',
+                            showlegend=False
+                        ))
+                    else:
+                        fig.add_trace(go.Scattermapbox(
+                            lat=df_clean['Lat'],
+                            lon=df_clean['Long'],
+                            mode='markers',
+                            marker=dict(
+                                size=sizes,
+                                color=df_clean[color_column],
+                                colorscale='Turbo',
+                                showscale=True,
+                                colorbar=dict(title=color_by)
+                            ),
+                            text=hover_data,
+                            hovertemplate='<span style="color: black;">%{text}</span><extra></extra>',
+                            name='Bird Samples',
+                            showlegend=False
+                        ))
             
             # Configure map layout (basic settings)
             center_lat = df_clean['Lat'].mean()
@@ -344,59 +378,73 @@ if df is not None:
             
             # Add range map overlay after mapbox is configured
             if image_data:
-                st.write(f"Debug: Adding image overlay after mapbox setup")
-                try:
-                    # Method 1: Try using mapbox style with image layer
-                    fig.update_layout(
-                        mapbox=dict(
-                            style=map_style,
-                            center=dict(lat=center_lat, lon=center_lon),
-                            zoom=5,
-                            layers=[
-                                dict(
-                                    source=image_data['source'],
-                                    below="traces",
-                                    sourcelayer="",
-                                    type="raster",
-                                    opacity=image_data['opacity'],
-                                    coordinates=[
-                                        [image_data['bounds'][0], image_data['bounds'][3]],  # top-left: [west, north]
-                                        [image_data['bounds'][2], image_data['bounds'][3]],  # top-right: [east, north]
-                                        [image_data['bounds'][2], image_data['bounds'][1]],  # bottom-right: [east, south]
-                                        [image_data['bounds'][0], image_data['bounds'][1]]   # bottom-left: [west, south]
-                                    ]
-                                )
-                            ]
-                        )
-                    )
-                    st.write("Debug: Image overlay added as mapbox layer")
-                except Exception as e:
-                    st.write(f"Debug: Mapbox layer failed: {e}")
-                    # Method 2: Fallback to layout image with paper coordinates
+                st.write(f"Debug: Adding image overlay after map setup")
+                
+                if map_style == "Plotly (with image overlay)":
+                    # Use regular Plotly with image overlay (works better)
                     try:
                         fig.add_layout_image(
                             source=image_data['source'],
-                            xref="paper",
-                            yref="paper",
-                            x=0,
-                            y=0,
-                            sizex=1,
-                            sizey=1,
+                            xref="x",
+                            yref="y",
+                            x=image_data['bounds'][0],  # west
+                            y=image_data['bounds'][1],  # south
+                            sizex=image_data['bounds'][2] - image_data['bounds'][0],  # width
+                            sizey=image_data['bounds'][3] - image_data['bounds'][1],  # height
                             opacity=image_data['opacity'],
                             layer="below"
                         )
-                        st.write("Debug: Image overlay added as layout image")
-                    except Exception as e2:
-                        st.error(f"Both overlay methods failed: {e2}")
-            else:
-                # Standard mapbox layout without image
-                fig.update_layout(
-                    mapbox=dict(
-                        style=map_style,
-                        center=dict(lat=center_lat, lon=center_lon),
-                        zoom=5
+                        st.write("Debug: Image overlay added successfully to regular Plotly")
+                        
+                        # Configure regular Plotly layout
+                        fig.update_layout(
+                            xaxis=dict(
+                                range=[image_data['bounds'][0] - 2, image_data['bounds'][2] + 2],
+                                showgrid=True,
+                                title="Longitude"
+                            ),
+                            yaxis=dict(
+                                range=[image_data['bounds'][1] - 2, image_data['bounds'][3] + 2],
+                                showgrid=True,
+                                title="Latitude"
+                            )
+                        )
+                        
+                    except Exception as e:
+                        st.error(f"Error adding image to regular Plotly: {e}")
+                else:
+                    # Mapbox layout without image overlay
+                    st.warning("Image overlay not supported with mapbox style")
+                    fig.update_layout(
+                        mapbox=dict(
+                            style="open-street-map",
+                            center=dict(lat=center_lat, lon=center_lon),
+                            zoom=5
+                        )
                     )
-                )
+            else:
+                # Configure layout based on map style
+                if map_style == "Plotly (with image overlay)":
+                    fig.update_layout(
+                        xaxis=dict(
+                            range=[df_clean['Long'].min() - 2, df_clean['Long'].max() + 2],
+                            showgrid=True,
+                            title="Longitude"
+                        ),
+                        yaxis=dict(
+                            range=[df_clean['Lat'].min() - 2, df_clean['Lat'].max() + 2],
+                            showgrid=True,
+                            title="Latitude"
+                        )
+                    )
+                else:
+                    fig.update_layout(
+                        mapbox=dict(
+                            style="open-street-map",
+                            center=dict(lat=center_lat, lon=center_lon),
+                            zoom=5
+                        )
+                    )
             
             st.plotly_chart(fig, use_container_width=True, key="main_map")
             
