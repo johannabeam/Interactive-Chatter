@@ -36,15 +36,24 @@ def load_github_data(url):
         st.error(f"Error loading data from GitHub: {e}")
         return None
 
-def process_image_overlay(image_file):
-    """Process uploaded image for overlay"""
+def process_image_overlay(image_source):
+    """Process image for overlay - handles both files and URLs"""
     try:
         from PIL import Image
         import base64
         import io
+        import requests
         
-        # Open and process the image
-        image = Image.open(image_file)
+        if isinstance(image_source, str):  # URL
+            # Download image from URL
+            response = requests.get(image_source)
+            if response.status_code == 200:
+                image = Image.open(io.BytesIO(response.content))
+            else:
+                st.error(f"Could not download image from URL: {response.status_code}")
+                return None
+        else:  # Uploaded file
+            image = Image.open(image_source)
         
         # Convert to base64 for plotly
         buffer = io.BytesIO()
@@ -89,37 +98,65 @@ if df is not None:
             # Sidebar controls
             st.sidebar.header("🎛️ Map Controls")
             
-            # Image overlay option
-            st.sidebar.header("🖼️ Image Overlay")
-            image_overlay = st.sidebar.checkbox("Add image overlay", value=False)
+            # Range Map overlay option - UPDATED
+            st.sidebar.header("🖼️ Range Map Overlay")
+            image_overlay = st.sidebar.checkbox("Add range map overlay", value=True)  # Default to True
+            
+            # Default range map from your R plot
+            default_range_map = "https://raw.githubusercontent.com/johannabeam/Interactive-Chatter/main/ybch_genoscape.png"
             
             image_file = None
+            image_url = None
+            
             if image_overlay:
-                image_file = st.sidebar.file_uploader(
-                    "Upload image file (.png, .jpg, .jpeg)",
-                    type=['png', 'jpg', 'jpeg'],
-                    help="Upload georeferenced image file"
+                map_source = st.sidebar.radio(
+                    "Range map source:",
+                    ["Use Default Range Map", "Upload Custom Image", "Use Image URL"]
                 )
                 
-                if image_file:
+                if map_source == "Use Default Range Map":
+                    image_url = default_range_map
+                    st.sidebar.success("Using default YBCH range map")
+                    
+                    # Default coordinates from your R plot extent
+                    west_bound = -125.0
+                    east_bound = -73.9
+                    south_bound = 18.4  
+                    north_bound = 51.5
+                    
+                elif map_source == "Upload Custom Image":
+                    image_file = st.sidebar.file_uploader(
+                        "Upload image file (.png, .jpg, .jpeg)",
+                        type=['png', 'jpg', 'jpeg'],
+                        help="Upload georeferenced image file"
+                    )
+                    
+                elif map_source == "Use Image URL":
+                    image_url = st.sidebar.text_input(
+                        "Image URL:",
+                        placeholder="https://raw.githubusercontent.com/user/repo/main/image.png"
+                    )
+                
+                # Coordinate inputs (only show if not using default with known coords)
+                if map_source != "Use Default Range Map":
                     st.sidebar.subheader("Image Coordinates")
                     st.sidebar.markdown("*Enter the geographic bounds of your image:*")
                     
                     col1, col2 = st.sidebar.columns(2)
                     with col1:
-                        west_bound = st.number_input("West (min longitude)", value=-125.0, step=0.1, format="%.4f")
-                        south_bound = st.number_input("South (min latitude)", value=32.0, step=0.1, format="%.4f")
+                        west_bound = st.sidebar.number_input("West (min longitude)", value=-125.0, step=0.1, format="%.4f")
+                        south_bound = st.sidebar.number_input("South (min latitude)", value=18.4, step=0.1, format="%.4f")
                     with col2:
-                        east_bound = st.number_input("East (max longitude)", value=-110.0, step=0.1, format="%.4f")
-                        north_bound = st.number_input("North (max latitude)", value=45.0, step=0.1, format="%.4f")
-                    
-                    image_opacity = st.sidebar.slider(
-                        "Image opacity",
-                        min_value=0.1,
-                        max_value=1.0,
-                        value=0.6,
-                        step=0.1
-                    )
+                        east_bound = st.sidebar.number_input("East (max longitude)", value=-73.9, step=0.1, format="%.4f")
+                        north_bound = st.sidebar.number_input("North (max latitude)", value=51.5, step=0.1, format="%.4f")
+                
+                image_opacity = st.sidebar.slider(
+                    "Range map opacity",
+                    min_value=0.1,
+                    max_value=1.0,
+                    value=0.5,
+                    step=0.1
+                )
             
             # Color options
             color_options = {
@@ -163,13 +200,14 @@ if df is not None:
                 ["open-street-map", "carto-positron"]
             )
             
-            # Process image overlay if selected
+            # Process image overlay if selected - UPDATED
             image_data = None
-            if image_overlay and image_file:
-                with st.spinner("Processing image..."):
-                    image_base64 = process_image_overlay(image_file)
+            if image_overlay and (image_file or image_url):
+                with st.spinner("Processing range map..."):
+                    image_source = image_url if image_url else image_file
+                    image_base64 = process_image_overlay(image_source)
                     if image_base64:
-                        st.success("✅ Image processed successfully")
+                        st.success("✅ Range map loaded successfully")
                         image_data = {
                             'source': image_base64,
                             'bounds': (west_bound, south_bound, east_bound, north_bound),
@@ -177,9 +215,11 @@ if df is not None:
                         }
                         
                         # Show image info
-                        with st.expander("🖼️ Image Overlay Info"):
+                        with st.expander("🗺️ Range Map Info"):
                             st.write(f"Bounds: West={west_bound}, South={south_bound}, East={east_bound}, North={north_bound}")
                             st.write(f"Opacity: {image_opacity}")
+                            if image_url:
+                                st.write(f"Source: {image_url}")
             
             # Create the interactive map
             st.header("🗺️ Interactive Genetic Data Map")
@@ -187,7 +227,7 @@ if df is not None:
             # Create the map figure
             fig = go.Figure()
             
-            # Add image overlay first (so points appear on top)
+            # Add range map overlay first (so points appear on top) - UPDATED
             if image_data:
                 fig.add_layout_image(
                     source=image_data['source'],
@@ -263,7 +303,7 @@ if df is not None:
                             if size_column and size_column in df_clean.columns:
                                 sizes = subset_df[size_column]
                                 sizes = ((sizes - df_clean[size_column].min()) / 
-                                        (df_clean[size_column].max() - df_clean[size_column].min()) * 15) + 8
+                                        (df_clean[size_column].max() - df_clean[size_column].min()) * 25) + 15
                             else:
                                 sizes = 15
                             
@@ -283,7 +323,7 @@ if df is not None:
                     # Numerical coloring - single trace with colorscale
                     if size_column and size_column in df_clean.columns:
                         sizes = df_clean[size_column]
-                        sizes = ((sizes - sizes.min()) / (sizes.max() - sizes.min()) * 15) + 8
+                        sizes = ((sizes - sizes.min()) / (sizes.max() - sizes.min()) * 25) + 15
                     else:
                         sizes = 15
                     
@@ -581,17 +621,16 @@ with st.expander("📋 How to set up your data on GitHub"):
     ### Optional columns for enhanced visualization:
     - `Population`, `Climate`, `Sex`, `MEAN_DEPTH`, `coverage`, etc.
     
-    ### Grid Overlay Features:
-    - **Upload grid files**: GRD, GeoTIFF, ASCII, NetCDF formats supported
-    - **Adjustable opacity**: Control transparency of grid overlay
-    - **Color schemes**: Multiple color palettes for grid visualization
-    - **Grid info**: Shows dimensions, value ranges, and bounds
+    ### Range Map Features:
+    - **Default range map**: Automatically loads YBCH genoscape
+    - **Custom upload**: Upload your own range map image
+    - **URL support**: Link to images hosted online
+    - **Adjustable opacity**: Control transparency of range overlay
     
-    ### Common grid file uses:
-    - **Elevation data**: Topographic information
-    - **Climate data**: Temperature, precipitation, etc.
-    - **Habitat data**: Land cover, vegetation indices
-    - **Environmental variables**: Any spatially continuous data
+    ### Tips:
+    - Make sure your repository is public for the raw URL to work
+    - The app will cache your data for faster loading
+    - Range map will appear as background layer with genetic data on top
     """)
 
 # Footer
