@@ -1,4 +1,50 @@
-import streamlit as st
+# Configure map layout
+            center_lat = df_clean['Lat'].mean()
+            center_lon = df_clean['Long'].mean()
+            
+            fig.update_layout(
+                mapbox=dict(
+                    style=map_style,
+                    center=dict(lat=center_lat, lon=center_lon),
+                    zoom=5
+                ),
+                height=700,
+                margin=dict(l=0, r=0, t=0, b=0),
+                legend=dict(
+                    yanchor="top",
+                    y=0.99,
+                    xanchor="left", 
+                    x=0.01,
+                    bgcolor="white",
+                    bordercolor="black",
+                    borderwidth=1
+                ),
+                hoverlabel=dict(
+                    bgcolor="white",        # White hover background
+                    font_color="black",     # Black text
+                    bordercolor="black",    # Black border around hover
+                    font_size=12
+                )
+            )
+            
+            # Add range map overlay after mapbox is configured
+            if image_data:
+                st.write(f"Debug: Adding image overlay after mapbox setup")  # Debug
+                try:
+                    fig.add_layout_image(
+                        source=image_data['source'],
+                        xref="paper",       # Use paper coordinates (0-1)
+                        yref="paper",       # Use paper coordinates (0-1)
+                        x=0,                # Left edge
+                        y=0,                # Bottom edge  
+                        sizex=1,            # Full width
+                        sizey=1,            # Full height
+                        opacity=image_data['opacity'],
+                        layer="below"
+                    )
+                    st.write("Debug: Image overlay added successfully")
+                except Exception as e:
+                    st.error(f"Error adding image overlay: {e}")import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -235,17 +281,9 @@ if df is not None:
             # Add range map overlay first (so points appear on top) - UPDATED
             if image_data:
                 st.write(f"Debug: Adding image overlay with bounds {image_data['bounds']}")  # Debug
-                fig.add_layout_image(
-                    source=image_data['source'],
-                    xref="lon",     # Use mapbox coordinates
-                    yref="lat",     # Use mapbox coordinates
-                    x=image_data['bounds'][0],  # west
-                    y=image_data['bounds'][1],  # south
-                    sizex=image_data['bounds'][2] - image_data['bounds'][0],  # width
-                    sizey=image_data['bounds'][3] - image_data['bounds'][1],  # height
-                    opacity=image_data['opacity'],
-                    layer="below"
-                )
+                # For mapbox, we need to add the image as a mapbox layer, not layout image
+                # Let's try a different approach using a transparent scatter trace first
+                pass  # We'll add the image overlay after the mapbox is configured
             else:
                 st.write("Debug: No image data to overlay")  # Debug
             
