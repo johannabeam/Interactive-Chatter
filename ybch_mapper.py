@@ -321,8 +321,16 @@ if df is not None:
                     y=0.99,
                     xanchor="left", 
                     x=0.01,
-                    bgcolor="rgba(255,255,255,0.8)"
-                )
+                    bgcolor="white",
+                    bordercolor="black",
+                    borderwidth=1
+                ),
+                    hoverlabel=dict(
+                    bgcolor="white",        # White hover background
+                    font_color="black",     # Black text
+                    bordercolor="black",    # Black border around hover
+                    font_size=12
+    )
             )
             
             st.plotly_chart(fig, use_container_width=True, key="main_map")
@@ -409,7 +417,17 @@ if df is not None:
                         yanchor="bottom",
                         y=1.02,
                         xanchor="right",
-                        x=1
+                        x=1,        
+                        bgcolor="white",        # White legend background
+                        bordercolor="black",    # Black border
+                        borderwidth=1
+                    ),
+                        hoverlabel=dict(
+                        bgcolor="white",        # White hover background
+                        font_color="black",     # Black text
+                        bordercolor="black",    # Black border around hover
+                        font_size=12
+    )
                     )
                 )
                 
