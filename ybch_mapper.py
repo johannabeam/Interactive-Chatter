@@ -130,35 +130,43 @@ if df is not None:
                     st.sidebar.subheader("Image Coordinates")
                     st.sidebar.markdown("*Enter the geographic bounds of your range map:*")
                     
+                    # Initialize session state for coordinates if not exists
+                    if 'west_bound' not in st.session_state:
+                        st.session_state.west_bound = -125.0
+                    if 'east_bound' not in st.session_state:
+                        st.session_state.east_bound = -73.9
+                    if 'south_bound' not in st.session_state:
+                        st.session_state.south_bound = 18.4
+                    if 'north_bound' not in st.session_state:
+                        st.session_state.north_bound = 51.5
+                    
                     # Show data bounds for reference
                     if len(df_clean) > 0:
                         st.sidebar.info(f"Your data spans:\nLat: {df_clean['Lat'].min():.2f} to {df_clean['Lat'].max():.2f}\nLon: {df_clean['Long'].min():.2f} to {df_clean['Long'].max():.2f}")
                     
-                    col1, col2 = st.sidebar.columns(2)
-                    with col1:
-                        west_bound = st.sidebar.number_input("West (min longitude)", value=-125.0, step=0.1, format="%.4f")
-                        south_bound = st.sidebar.number_input("South (min latitude)", value=18.4, step=0.1, format="%.4f")
-                    with col2:
-                        east_bound = st.sidebar.number_input("East (max longitude)", value=-73.9, step=0.1, format="%.4f")
-                        north_bound = st.sidebar.number_input("North (max latitude)", value=51.5, step=0.1, format="%.4f")
-                    
-                    # Quick adjustment buttons
+                    # Quick adjustment buttons FIRST (so they update session_state)
                     st.sidebar.markdown("**Quick Adjustments:**")
                     
                     # Position adjustments
                     col1, col2, col3 = st.sidebar.columns(3)
                     with col1:
                         if st.sidebar.button("⬅️ Move West"):
-                            west_bound -= 5.0
-                            east_bound -= 5.0
+                            st.session_state.west_bound -= 5.0
+                            st.session_state.east_bound -= 5.0
                     with col2:
                         if st.sidebar.button("⬆️ Move North"):
-                            south_bound += 5.0
-                            north_bound += 5.0
+                            st.session_state.south_bound += 5.0
+                            st.session_state.north_bound += 5.0
                     with col3:
                         if st.sidebar.button("➡️ Move East"):
-                            west_bound += 5.0
-                            east_bound += 5.0
+                            st.session_state.west_bound += 5.0
+                            st.session_state.east_bound += 5.0
+                    
+                    col1, col2 = st.sidebar.columns(2)
+                    with col1:
+                        if st.sidebar.button("⬇️ Move South"):
+                            st.session_state.south_bound -= 5.0
+                            st.session_state.north_bound -= 5.0
                     
                     # Size adjustments
                     st.sidebar.markdown("**Resize Image:**")
@@ -166,42 +174,57 @@ if df is not None:
                     with col1:
                         if st.sidebar.button("🔍 Zoom In"):
                             # Make image smaller (zoom in)
-                            center_lat = (north_bound + south_bound) / 2
-                            center_lon = (east_bound + west_bound) / 2
-                            lat_range = (north_bound - south_bound) * 0.8
-                            lon_range = (east_bound - west_bound) * 0.8
-                            north_bound = center_lat + lat_range/2
-                            south_bound = center_lat - lat_range/2
-                            east_bound = center_lon + lon_range/2
-                            west_bound = center_lon - lon_range/2
+                            center_lat = (st.session_state.north_bound + st.session_state.south_bound) / 2
+                            center_lon = (st.session_state.east_bound + st.session_state.west_bound) / 2
+                            lat_range = (st.session_state.north_bound - st.session_state.south_bound) * 0.8
+                            lon_range = (st.session_state.east_bound - st.session_state.west_bound) * 0.8
+                            st.session_state.north_bound = center_lat + lat_range/2
+                            st.session_state.south_bound = center_lat - lat_range/2
+                            st.session_state.east_bound = center_lon + lon_range/2
+                            st.session_state.west_bound = center_lon - lon_range/2
                     with col2:
                         if st.sidebar.button("🔍 Zoom Out"):
                             # Make image bigger (zoom out)
-                            center_lat = (north_bound + south_bound) / 2
-                            center_lon = (east_bound + west_bound) / 2
-                            lat_range = (north_bound - south_bound) * 1.2
-                            lon_range = (east_bound - west_bound) * 1.2
-                            north_bound = center_lat + lat_range/2
-                            south_bound = center_lat - lat_range/2
-                            east_bound = center_lon + lon_range/2
-                            west_bound = center_lon - lon_range/2
+                            center_lat = (st.session_state.north_bound + st.session_state.south_bound) / 2
+                            center_lon = (st.session_state.east_bound + st.session_state.west_bound) / 2
+                            lat_range = (st.session_state.north_bound - st.session_state.south_bound) * 1.2
+                            lon_range = (st.session_state.east_bound - st.session_state.west_bound) * 1.2
+                            st.session_state.north_bound = center_lat + lat_range/2
+                            st.session_state.south_bound = center_lat - lat_range/2
+                            st.session_state.east_bound = center_lon + lon_range/2
+                            st.session_state.west_bound = center_lon - lon_range/2
                     
                     # Preset buttons for common ranges
                     st.sidebar.markdown("**Preset Ranges:**")
                     col1, col2 = st.sidebar.columns(2)
                     with col1:
                         if st.sidebar.button("🌎 North America"):
-                            west_bound = -130.0
-                            east_bound = -60.0
-                            south_bound = 20.0
-                            north_bound = 60.0
+                            st.session_state.west_bound = -130.0
+                            st.session_state.east_bound = -60.0
+                            st.session_state.south_bound = 20.0
+                            st.session_state.north_bound = 60.0
                     with col2:
                         if st.sidebar.button("🎯 Fit to Data"):
                             margin = 3.0
-                            west_bound = df_clean['Long'].min() - margin
-                            east_bound = df_clean['Long'].max() + margin
-                            south_bound = df_clean['Lat'].min() - margin
-                            north_bound = df_clean['Lat'].max() + margin
+                            st.session_state.west_bound = df_clean['Long'].min() - margin
+                            st.session_state.east_bound = df_clean['Long'].max() + margin
+                            st.session_state.south_bound = df_clean['Lat'].min() - margin
+                            st.session_state.north_bound = df_clean['Lat'].max() + margin
+                    
+                    # Number inputs that reflect session_state values
+                    col1, col2 = st.sidebar.columns(2)
+                    with col1:
+                        west_bound = st.sidebar.number_input("West (min longitude)", value=st.session_state.west_bound, step=0.1, format="%.4f", key="west_input")
+                        south_bound = st.sidebar.number_input("South (min latitude)", value=st.session_state.south_bound, step=0.1, format="%.4f", key="south_input")
+                    with col2:
+                        east_bound = st.sidebar.number_input("East (max longitude)", value=st.session_state.east_bound, step=0.1, format="%.4f", key="east_input")
+                        north_bound = st.sidebar.number_input("North (max latitude)", value=st.session_state.north_bound, step=0.1, format="%.4f", key="north_input")
+                    
+                    # Update session_state when number inputs change
+                    st.session_state.west_bound = west_bound
+                    st.session_state.east_bound = east_bound
+                    st.session_state.south_bound = south_bound
+                    st.session_state.north_bound = north_bound
                     
                     image_opacity = st.sidebar.slider(
                         "Range map opacity",
