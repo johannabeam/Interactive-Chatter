@@ -318,16 +318,11 @@ if df is not None:
                         showlegend=False
                     ))
             
-            # Configure map layout
+            # Configure map layout (basic settings)
             center_lat = df_clean['Lat'].mean()
             center_lon = df_clean['Long'].mean()
             
             fig.update_layout(
-                mapbox=dict(
-                    style=map_style,
-                    center=dict(lat=center_lat, lon=center_lon),
-                    zoom=5
-                ),
                 height=700,
                 margin=dict(l=0, r=0, t=0, b=0),
                 legend=dict(
@@ -351,20 +346,57 @@ if df is not None:
             if image_data:
                 st.write(f"Debug: Adding image overlay after mapbox setup")
                 try:
-                    fig.add_layout_image(
-                        source=image_data['source'],
-                        xref="paper",
-                        yref="paper",
-                        x=0,
-                        y=0,
-                        sizex=1,
-                        sizey=1,
-                        opacity=image_data['opacity'],
-                        layer="below"
+                    # Method 1: Try using mapbox style with image layer
+                    fig.update_layout(
+                        mapbox=dict(
+                            style=map_style,
+                            center=dict(lat=center_lat, lon=center_lon),
+                            zoom=5,
+                            layers=[
+                                dict(
+                                    source=image_data['source'],
+                                    below="traces",
+                                    sourcelayer="",
+                                    type="raster",
+                                    opacity=image_data['opacity'],
+                                    coordinates=[
+                                        [image_data['bounds'][0], image_data['bounds'][3]],  # top-left: [west, north]
+                                        [image_data['bounds'][2], image_data['bounds'][3]],  # top-right: [east, north]
+                                        [image_data['bounds'][2], image_data['bounds'][1]],  # bottom-right: [east, south]
+                                        [image_data['bounds'][0], image_data['bounds'][1]]   # bottom-left: [west, south]
+                                    ]
+                                )
+                            ]
+                        )
                     )
-                    st.write("Debug: Image overlay added successfully")
+                    st.write("Debug: Image overlay added as mapbox layer")
                 except Exception as e:
-                    st.error(f"Error adding image overlay: {e}")
+                    st.write(f"Debug: Mapbox layer failed: {e}")
+                    # Method 2: Fallback to layout image with paper coordinates
+                    try:
+                        fig.add_layout_image(
+                            source=image_data['source'],
+                            xref="paper",
+                            yref="paper",
+                            x=0,
+                            y=0,
+                            sizex=1,
+                            sizey=1,
+                            opacity=image_data['opacity'],
+                            layer="below"
+                        )
+                        st.write("Debug: Image overlay added as layout image")
+                    except Exception as e2:
+                        st.error(f"Both overlay methods failed: {e2}")
+            else:
+                # Standard mapbox layout without image
+                fig.update_layout(
+                    mapbox=dict(
+                        style=map_style,
+                        center=dict(lat=center_lat, lon=center_lon),
+                        zoom=5
+                    )
+                )
             
             st.plotly_chart(fig, use_container_width=True, key="main_map")
             
