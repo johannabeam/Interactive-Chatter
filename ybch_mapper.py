@@ -226,6 +226,8 @@ if df is not None:
                     hover_info.append(f"Climate: {row['Climate']}")
                 if 'MEAN_DEPTH' in row and pd.notna(row['MEAN_DEPTH']):
                     hover_info.append(f"Mean Depth: {row['MEAN_DEPTH']:.2f}")
+                if 'Month' in row and pd.notna(row['Month']) and 'Day' in row and pd.notna(row['Day']):
+                    hover_info.append(f"Date: {row['Month']}/{row['Day']}")
                 
                 hover_data.append("<br>".join(hover_info))
             
