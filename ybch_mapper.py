@@ -413,19 +413,20 @@ if df is not None:
                     ),
                     plot_bgcolor='white',
                     legend=dict(
-                        orientation="h",
-                        yanchor="bottom",
-                        y=1.02,
-                        xanchor="right",
-                        x=1,
-                        bgcolor="white",
-                        bordercolor="black",
-                        borderwidth=1,
-                        font=dict(
-                            color="black",      # This fixes the white text!
-                            size=12,           # Optional: adjust font size
-                            family="Arial"     # Optional: change font family
-    ),
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1,
+                    bgcolor="white",
+                    bordercolor="black",
+                    borderwidth=1,
+                    font=dict(
+                        color="black",      # This fixes the white text!
+                        size=12,           # Optional: adjust font size
+                        family="Arial"     # Optional: change font family
+    )
+),
                     hoverlabel=dict(
                         bgcolor="white",        # White hover background
                         font_color="black",     # Black text
