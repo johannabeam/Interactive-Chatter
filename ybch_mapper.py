@@ -103,7 +103,7 @@ if df is not None:
             image_overlay = st.sidebar.checkbox("Add range map overlay", value=True)  # Default to True
             
             # Default range map from your R plot
-            default_range_map = "https://raw.githubusercontent.com/johannabeam/Interactive-Chatter/main/ybch_genoscape.png"
+            default_range_map = "https://raw.githubusercontent.com/johannabeam/Interactive-Chatter/refs/heads/main/ybch_genoscape.png"
             
             image_file = None
             image_url = None
@@ -117,6 +117,7 @@ if df is not None:
                 if map_source == "Use Default Range Map":
                     image_url = default_range_map
                     st.sidebar.success("Using default YBCH range map")
+                    st.sidebar.write(f"URL: {image_url}")  # Debug info
                     
                     # Default coordinates from your R plot extent
                     west_bound = -125.0
