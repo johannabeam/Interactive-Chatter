@@ -227,7 +227,12 @@ if df is not None:
                 if 'MEAN_DEPTH' in row and pd.notna(row['MEAN_DEPTH']):
                     hover_info.append(f"Mean Depth: {row['MEAN_DEPTH']:.2f}")
                 if 'Month' in row and pd.notna(row['Month']) and 'Day' in row and pd.notna(row['Day']):
-                    hover_info.append(f"Date: {row['Month']}/{row['Day']}")
+                         month_names = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                         month = int(row['Month'])
+                         day = int(row['Day'])
+                        month_name = month_names[month] if 1 <= month <= 12 else str(month)
+                        hover_info.append(f"Date: {month_name} {day}")
                 
                 hover_data.append("<br>".join(hover_info))
             
