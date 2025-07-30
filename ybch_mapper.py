@@ -273,7 +273,7 @@ if df is not None:
             # Map style
             map_style = st.sidebar.selectbox(
                 "Map style:",
-                ["Plotly (with image overlay)", "Mapbox (no image overlay)"]
+                ["Mapbox with range overlay", "Plotly with range overlay", "Mapbox only (no overlay)"]
             )
             
             # Process image overlay if selected
@@ -393,7 +393,7 @@ if df is not None:
                                 sizes = 15
                             
                             # Choose plot type based on map style
-                            if map_style == "Plotly (with image overlay)":
+                            if map_style == "Plotly with range overlay":
                                 fig.add_trace(go.Scatter(
                                     x=subset_df['Long'],
                                     y=subset_df['Lat'],
@@ -406,7 +406,7 @@ if df is not None:
                                     hovertemplate='<span style="color: black;">%{text}</span><extra></extra>',
                                     name=f"{val} (n={mask.sum()})"
                                 ))
-                            else:
+                            else:  # Mapbox styles
                                 fig.add_trace(go.Scattermapbox(
                                     lat=subset_df['Lat'],
                                     lon=subset_df['Long'],
@@ -428,7 +428,7 @@ if df is not None:
                         sizes = 15
                     
                     # Choose plot type based on map style
-                    if map_style == "Plotly (with image overlay)":
+                    if map_style == "Plotly with range overlay":
                         fig.add_trace(go.Scatter(
                             x=df_clean['Long'],
                             y=df_clean['Lat'],
@@ -445,7 +445,7 @@ if df is not None:
                             name='Bird Samples',
                             showlegend=False
                         ))
-                    else:
+                    else:  # Mapbox styles
                         fig.add_trace(go.Scattermapbox(
                             lat=df_clean['Lat'],
                             lon=df_clean['Long'],
